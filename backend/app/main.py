@@ -1,0 +1,70 @@
+"""
+backend/app/main.py
+
+Punto de entrada de la aplicacion FastAPI.
+- Carga el Predictor una sola vez al iniciar (evita recargar MediaPipe por request)
+- Configura CORS para el frontend React
+- Registra los routers
+"""
+
+import logging
+import os
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+from app.routes import analyze
+from app.services.predictor import get_predictor
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s  %(levelname)-8s  %(name)s: %(message)s",
+)
+logger = logging.getLogger(__name__)
+
+app = FastAPI(
+    title="SoberLens API",
+    version="0.1.0",
+    description="Backend de deteccion de intoxicacion por analisis facial.",
+)
+
+# ---------------------------------------------------------------------------
+# CORS
+# ---------------------------------------------------------------------------
+ALLOWED_ORIGINS = os.getenv(
+    "ALLOWED_ORIGINS",
+    "http://localhost:5173",  # Vite dev server por defecto
+).split(",")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=ALLOWED_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+# ---------------------------------------------------------------------------
+# Startup: precarga el modelo una vez
+# ---------------------------------------------------------------------------
+@app.on_event("startup")
+async def startup_event():
+    logger.info("Iniciando SoberLens API...")
+    get_predictor()  # carga model.pkl, scaler.pkl, FaceLandmarker en memoria
+    logger.info("Modelo cargado. Servidor listo.")
+
+
+# ---------------------------------------------------------------------------
+# Routers
+# ---------------------------------------------------------------------------
+app.include_router(analyze.router, tags=["analyze"])
+# Los siguientes se agregarán en pasos posteriores:
+# app.include_router(identity.router, tags=["identity"])
+# app.include_router(sessions.router, tags=["sessions"])
+# app.include_router(notify.router,   tags=["notify"])
+
+
+@app.get("/health")
+async def health():
+    return {"status": "ok"}
