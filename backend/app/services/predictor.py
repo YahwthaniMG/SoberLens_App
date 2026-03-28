@@ -117,36 +117,50 @@ LANDMARK_INDICES = [
 ]
 
 # Pares de landmarks para calcular distancias lineales (line00..line26)
-# Estos pares corresponden a las 27 distancias del modelo
+# Extraidos directamente de LANDMARK_PAIRS en SoberLens_Model
 LINE_PAIRS = [
-    (33, 263),  # line00 ancho ocular
-    (133, 362),  # line01
-    (70, 300),  # line02
-    (63, 293),  # line03
-    (105, 334),  # line04
-    (107, 336),  # line05
-    (55, 285),  # line06
-    (65, 295),  # line07
-    (52, 282),  # line08
-    (46, 276),  # line09
-    (33, 133),  # line10 ojo izquierdo apertura horizontal
-    (362, 263),  # line11 ojo derecho apertura horizontal
-    (159, 145),  # line12 apertura vertical ojo izq
-    (386, 374),  # line13 apertura vertical ojo der
-    (61, 291),  # line14 comisuras boca
-    (13, 14),  # line15 apertura labios
-    (0, 17),  # line16 labio superior-inferior
-    (152, 10),  # line17 altura cara
-    (234, 454),  # line18 ancho cara
-    (4, 152),  # line19 nariz-barbilla
-    (1, 4),  # line20 nariz
-    (33, 1),  # line21
-    (263, 1),  # line22
-    (61, 13),  # line23
-    (291, 13),  # line24
-    (17, 152),  # line25
-    (10, 152),  # line26
+    # Apertura vertical ojo izquierdo (droopiness)
+    (145, 159),  # line00
+    (144, 160),  # line01
+    (153, 158),  # line02
+    (154, 157),  # line03
+    # Apertura vertical ojo derecho
+    (374, 386),  # line04
+    (373, 387),  # line05
+    (380, 385),  # line06
+    (381, 384),  # line07
+    # Ancho de ojos
+    (33, 133),  # line08 ancho ojo izquierdo
+    (362, 263),  # line09 ancho ojo derecho
+    # Apertura vertical de la boca
+    (13, 14),  # line10
+    (82, 87),  # line11
+    (312, 317),  # line12
+    # Ancho de la boca
+    (61, 291),  # line13
+    (78, 308),  # line14
+    # Nariz a boca
+    (1, 13),  # line15
+    (1, 0),  # line16
+    # Distancia entre ojos
+    (33, 263),  # line17
+    # Distancia ojo-boca
+    (159, 13),  # line18
+    (386, 13),  # line19
+    # Alto del contorno facial
+    (10, 152),  # line20
+    # Anchura de mejillas
+    (116, 345),  # line21
+    (123, 352),  # line22
+    # Angulo de cejas
+    (70, 63),  # line23 ceja izquierda
+    (107, 55),  # line24 ceja izquierda
+    (300, 293),  # line25 ceja derecha
+    (336, 285),  # line26 ceja derecha
 ]
+
+# Landmarks que delimitan la region de la frente para analisis de color
+FOREHEAD_LANDMARKS = [10, 338, 297, 332, 284, 251, 389, 356, 103, 67, 109]
 
 
 class Predictor:
@@ -243,38 +257,24 @@ class Predictor:
     def _forehead_color(self, bgr_image: np.ndarray, landmarks) -> dict:
         """
         Color promedio LAB y canal R de la region de la frente.
-        Region aproximada: entre los landmarks de la frente superior
-        y los ojos (landmarks 10, 338, 297, 332, 284 aprox).
+        Usa FOREHEAD_LANDMARKS para delimitar el bounding box de la frente.
 
         Retorna: forehead_L, forehead_a, forehead_b, forehead_R
         """
         h, w = bgr_image.shape[:2]
 
-        # Puntos que delimitan la frente (superiores e inferiores)
-        top_pts = [10, 338, 297, 332, 284]
-        bot_pts = [
-            33,
-            246,
-            161,
-            160,
-            159,
-            158,
-            157,
-            173,
-            263,
-            466,
-            388,
-            387,
-            386,
-            385,
-            384,
-            398,
+        # Coordenadas pixel de los landmarks de la frente
+        pts = [
+            (int(landmarks[i].x * w), int(landmarks[i].y * h))
+            for i in FOREHEAD_LANDMARKS
         ]
+        xs = [p[0] for p in pts]
+        ys = [p[1] for p in pts]
 
-        top_y = min(int(landmarks[i].y * h) for i in top_pts)
-        bot_y = min(int(landmarks[i].y * h) for i in bot_pts)
-        left_x = int(landmarks[234].x * w)
-        right_x = int(landmarks[454].x * w)
+        top_y = max(0, min(ys))
+        bot_y = min(h, max(ys))
+        left_x = max(0, min(xs))
+        right_x = min(w, max(xs))
 
         # Asegurar que el recorte sea valido
         top_y = max(0, top_y)
