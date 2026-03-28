@@ -195,19 +195,109 @@ class Predictor:
         return mp_vision.FaceLandmarker.create_from_options(options)
 
     # ------------------------------------------------------------------
+    # Recorte y alineacion (replica face_extractor.py del entrenamiento)
+    # ------------------------------------------------------------------
+
+    FACE_OUTPUT_SIZE = 224
+    FACE_PADDING = 0.25
+    # Posicion deseada de los ojos en la imagen alineada (igual que face_extractor.py)
+    DESIRED_LEFT_EYE_X = 0.30
+    DESIRED_EYE_Y = 0.35
+
+    def _crop_and_align(self, bgr_image: np.ndarray) -> np.ndarray | None:
+        """
+        Detecta la cara, recorta con padding 25% y alinea a 224x224
+        usando los iris (landmarks 468 y 473), replicando el pipeline
+        de face_extractor.py usado durante el entrenamiento.
+
+        Retorna imagen BGR 224x224 o None si no detecta cara valida.
+        """
+        h, w = bgr_image.shape[:2]
+        rgb = cv2.cvtColor(bgr_image, cv2.COLOR_BGR2RGB)
+        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb)
+        result = self.landmarker.detect(mp_image)
+
+        if not result.face_landmarks:
+            return None
+
+        lms = result.face_landmarks[0]
+        # Convertir landmarks normalizados a pixeles
+        pts = np.array([[lm.x * w, lm.y * h] for lm in lms], dtype=np.float32)
+
+        # Bounding box desde los landmarks
+        x_min = int(pts[:, 0].min())
+        y_min = int(pts[:, 1].min())
+        x_max = int(pts[:, 0].max())
+        y_max = int(pts[:, 1].max())
+        box_w = x_max - x_min
+        box_h = y_max - y_min
+        side = max(box_w, box_h)
+
+        # Padding cuadrado del 25%
+        pad = int(side * self.FACE_PADDING)
+        x1 = max(0, x_min - pad)
+        y1 = max(0, y_min - pad)
+        x2 = min(w, x_max + pad)
+        y2 = min(h, y_max + pad)
+
+        crop = bgr_image[y1:y2, x1:x2]
+        if crop.size == 0:
+            return None
+
+        # Alineacion por iris
+        left_iris = pts[468]
+        right_iris = pts[473]
+
+        # Ajustar coordenadas al crop
+        left_iris_crop = left_iris - np.array([x1, y1])
+        right_iris_crop = right_iris - np.array([x1, y1])
+
+        dx = float(right_iris_crop[0] - left_iris_crop[0])
+        dy = float(right_iris_crop[1] - left_iris_crop[1])
+        angle = np.degrees(np.arctan2(dy, dx))
+
+        eye_center = (
+            float((left_iris_crop[0] + right_iris_crop[0]) / 2),
+            float((left_iris_crop[1] + right_iris_crop[1]) / 2),
+        )
+
+        current_dist = math.hypot(dx, dy)
+        desired_dist = self.FACE_OUTPUT_SIZE * (1.0 - 2 * self.DESIRED_LEFT_EYE_X)
+        scale = desired_dist / (current_dist + 1e-6)
+
+        M = cv2.getRotationMatrix2D(eye_center, angle, scale)
+        M[0, 2] += self.FACE_OUTPUT_SIZE * 0.5 - eye_center[0]
+        M[1, 2] += self.FACE_OUTPUT_SIZE * self.DESIRED_EYE_Y - eye_center[1]
+
+        aligned = cv2.warpAffine(
+            crop,
+            M,
+            (self.FACE_OUTPUT_SIZE, self.FACE_OUTPUT_SIZE),
+            flags=cv2.INTER_LANCZOS4,
+            borderMode=cv2.BORDER_REPLICATE,
+        )
+        return aligned
+
+    # ------------------------------------------------------------------
     # Extraccion de features
     # ------------------------------------------------------------------
 
     def _extract_landmarks(self, bgr_image: np.ndarray):
         """
-        Retorna lista de 478 landmarks normalizados (x, y) o None si no detecta cara.
+        Recorta y alinea la cara a 224x224, luego extrae los 478 landmarks.
+        Retorna (aligned_image, landmarks) o (None, None) si no detecta cara.
         """
-        rgb = cv2.cvtColor(bgr_image, cv2.COLOR_BGR2RGB)
+        aligned = self._crop_and_align(bgr_image)
+        if aligned is None:
+            return None, None
+
+        h, w = aligned.shape[:2]
+        rgb = cv2.cvtColor(aligned, cv2.COLOR_BGR2RGB)
         mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb)
         result = self.landmarker.detect(mp_image)
         if not result.face_landmarks:
-            return None
-        return result.face_landmarks[0]  # lista de NormalizedLandmark
+            return None, None
+        return aligned, result.face_landmarks[0]
 
     def _landmark_features(self, landmarks) -> dict:
         """
@@ -222,18 +312,29 @@ class Predictor:
             feats[f"{key}_y"] = lm.y
         return feats
 
-    def _vector_features(self, landmarks, nose_idx=1) -> dict:
+    def _vector_features(self, landmarks, image_width: int) -> dict:
         """
-        Para cada landmark seleccionado: distancia euclidea y angulo
-        respecto al landmark de la nariz (punto de referencia central).
-        vec{idx}_dist, vec{idx}_angle
+        Vectores desde el centroide de KEY_LANDMARKS hasta cada landmark.
+        Replica exactamente el calculo del feature_extractor.py de entrenamiento:
+        - centroide = promedio de los KEY_LANDMARKS seleccionados (en pixeles)
+        - distancia normalizada por el ancho de la imagen
+        - angulo en radianes [-pi, pi]
         """
-        nose = landmarks[nose_idx]
+        # Convertir landmarks normalizados a pixeles usando image_width como proxy
+        # Los landmarks de MediaPipe son normalizados [0,1]; usamos image_width = 1.0
+        # para mantener coherencia con el entrenamiento (que tambien normaliza por w)
+        key_pts = np.array(
+            [[landmarks[idx].x, landmarks[idx].y] for idx in LANDMARK_INDICES],
+            dtype=np.float32,
+        )
+        centroid = key_pts.mean(axis=0)
+
         feats = {}
         for idx in LANDMARK_INDICES:
-            lm = landmarks[idx]
-            dx = lm.x - nose.x
-            dy = lm.y - nose.y
+            dx = float(landmarks[idx].x - centroid[0])
+            dy = float(landmarks[idx].y - centroid[1])
+            # En entrenamiento: dist / w, pero landmarks ya estan normalizados [0,1]
+            # por lo que dividir por w=1.0 es identidad — la distancia ya es invariante
             dist = math.hypot(dx, dy)
             angle = math.atan2(dy, dx)
             key = f"vec{idx:03d}"
@@ -243,14 +344,21 @@ class Predictor:
 
     def _line_features(self, landmarks) -> dict:
         """
-        Distancias euclidianas entre pares de landmarks predefinidos.
-        line00_dist ... line26_dist
+        Distancias euclidianas entre pares de landmarks, normalizadas
+        por la distancia inter-ocular (33 a 263).
+        Replica el calculo del feature_extractor.py de entrenamiento.
         """
+        left_eye = np.array([landmarks[33].x, landmarks[33].y])
+        right_eye = np.array([landmarks[263].x, landmarks[263].y])
+        interocular = float(np.linalg.norm(right_eye - left_eye))
+        if interocular < 1e-6:
+            interocular = 1.0
+
         feats = {}
         for i, (a, b) in enumerate(LINE_PAIRS):
-            lm_a = landmarks[a]
-            lm_b = landmarks[b]
-            dist = math.hypot(lm_a.x - lm_b.x, lm_a.y - lm_b.y)
+            pt_a = np.array([landmarks[a].x, landmarks[a].y])
+            pt_b = np.array([landmarks[b].x, landmarks[b].y])
+            dist = float(np.linalg.norm(pt_a - pt_b)) / interocular
             feats[f"line{i:02d}_dist"] = dist
         return feats
 
@@ -285,10 +393,10 @@ class Predictor:
         roi = bgr_image[top_y:bot_y, left_x:right_x]
         if roi.size == 0:
             return {
-                "forehead_L": 0.0,
-                "forehead_a": 0.0,
-                "forehead_b": 0.0,
-                "forehead_R": 0.0,
+                "forehead_L": 0.5,
+                "forehead_a": 0.5,
+                "forehead_b": 0.5,
+                "forehead_R": 0.5,
             }
 
         lab = cv2.cvtColor(roi, cv2.COLOR_BGR2Lab)
@@ -297,11 +405,12 @@ class Predictor:
         # Canal R (BGR -> indice 2)
         mean_R = float(roi[:, :, 2].mean())
 
+        # Normalizar por 255, igual que en feature_extractor.py de entrenamiento
         return {
-            "forehead_L": float(mean_lab[0]),
-            "forehead_a": float(mean_lab[1]),
-            "forehead_b": float(mean_lab[2]),
-            "forehead_R": mean_R,
+            "forehead_L": float(mean_lab[0]) / 255.0,
+            "forehead_a": float(mean_lab[1]) / 255.0,
+            "forehead_b": float(mean_lab[2]) / 255.0,
+            "forehead_R": mean_R / 255.0,
         }
 
     def _build_feature_vector(self, bgr_image: np.ndarray, landmarks) -> np.ndarray:
@@ -310,7 +419,7 @@ class Predictor:
         """
         feats = {}
         feats.update(self._landmark_features(landmarks))
-        feats.update(self._vector_features(landmarks))
+        feats.update(self._vector_features(landmarks, image_width=bgr_image.shape[1]))
         feats.update(self._line_features(landmarks))
         feats.update(self._forehead_color(bgr_image, landmarks))
 
@@ -335,15 +444,15 @@ class Predictor:
                 "prediction": "drunk" | "sober" | None,
             }
         """
-        landmarks = self._extract_landmarks(bgr_image)
-        if landmarks is None:
+        aligned, landmarks = self._extract_landmarks(bgr_image)
+        if aligned is None or landmarks is None:
             return {
                 "face_detected": False,
                 "drunk_probability": None,
                 "prediction": None,
             }
 
-        vector = self._build_feature_vector(bgr_image, landmarks)
+        vector = self._build_feature_vector(aligned, landmarks)
         scaled = self.scaler.transform(vector.reshape(1, -1))
         prob = float(self.model.predict_proba(scaled)[0][1])  # P(drunk)
 
