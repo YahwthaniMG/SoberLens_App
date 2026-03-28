@@ -13,7 +13,9 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routes import analyze
+from app.db.database import create_tables
+from app.routes import analyze, identity
+from app.services.identity import get_identity_service
 from app.services.predictor import get_predictor
 
 logging.basicConfig(
@@ -51,7 +53,9 @@ app.add_middleware(
 @app.on_event("startup")
 async def startup_event():
     logger.info("Iniciando SoberLens API...")
-    get_predictor()  # carga model.pkl, scaler.pkl, FaceLandmarker en memoria
+    create_tables()
+    get_predictor()
+    get_identity_service()
     logger.info("Modelo cargado. Servidor listo.")
 
 
@@ -59,8 +63,8 @@ async def startup_event():
 # Routers
 # ---------------------------------------------------------------------------
 app.include_router(analyze.router, tags=["analyze"])
+app.include_router(identity.router, tags=["identity"])
 # Los siguientes se agregarán en pasos posteriores:
-# app.include_router(identity.router, tags=["identity"])
 # app.include_router(sessions.router, tags=["sessions"])
 # app.include_router(notify.router,   tags=["notify"])
 

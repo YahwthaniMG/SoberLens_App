@@ -1,5 +1,5 @@
 fastapi
-uvicorn
+uvicorn[standard]
 python-multipart
 pydantic
 
@@ -8,6 +8,9 @@ mediapipe
 opencv-python-headless
 numpy
 scikit-learn
+
+# Base de datos
+sqlalchemy
 
 # Alerts (Twilio WhatsApp)
 twilio
