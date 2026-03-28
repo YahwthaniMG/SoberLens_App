@@ -456,7 +456,7 @@ class Predictor:
         scaled = self.scaler.transform(vector.reshape(1, -1))
         prob = float(self.model.predict_proba(scaled)[0][1])  # P(drunk)
 
-        threshold = float(os.getenv("MODEL_THRESHOLD", 0.30))
+        threshold = float(os.getenv("MODEL_THRESHOLD", 0.34))
         label = "drunk" if prob >= threshold else "sober"
 
         return {
