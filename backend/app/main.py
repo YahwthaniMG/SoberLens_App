@@ -2,7 +2,7 @@
 backend/app/main.py
 
 Punto de entrada de la aplicacion FastAPI.
-- Carga el Predictor una sola vez al iniciar (evita recargar MediaPipe por request)
+- Carga el Predictor e IdentityService una sola vez al iniciar
 - Configura CORS para el frontend React
 - Registra los routers
 """
@@ -14,7 +14,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.db.database import create_tables
-from app.routes import analyze, identity
+from app.routes import analyze, identity, sessions, notify
 from app.services.identity import get_identity_service
 from app.services.predictor import get_predictor
 
@@ -35,7 +35,7 @@ app = FastAPI(
 # ---------------------------------------------------------------------------
 ALLOWED_ORIGINS = os.getenv(
     "ALLOWED_ORIGINS",
-    "http://localhost:5173",  # Vite dev server por defecto
+    "http://localhost:5173",
 ).split(",")
 
 app.add_middleware(
@@ -48,7 +48,7 @@ app.add_middleware(
 
 
 # ---------------------------------------------------------------------------
-# Startup: precarga el modelo una vez
+# Startup
 # ---------------------------------------------------------------------------
 @app.on_event("startup")
 async def startup_event():
@@ -56,7 +56,7 @@ async def startup_event():
     create_tables()
     get_predictor()
     get_identity_service()
-    logger.info("Modelo cargado. Servidor listo.")
+    logger.info("Modelos cargados. Servidor listo.")
 
 
 # ---------------------------------------------------------------------------
@@ -64,9 +64,8 @@ async def startup_event():
 # ---------------------------------------------------------------------------
 app.include_router(analyze.router, tags=["analyze"])
 app.include_router(identity.router, tags=["identity"])
-# Los siguientes se agregarán en pasos posteriores:
-# app.include_router(sessions.router, tags=["sessions"])
-# app.include_router(notify.router,   tags=["notify"])
+app.include_router(sessions.router, tags=["sessions"])
+app.include_router(notify.router, tags=["notify"])
 
 
 @app.get("/health")
