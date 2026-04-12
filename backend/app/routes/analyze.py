@@ -150,4 +150,5 @@ async def analyze(
         drunk_ratio=session_result["drunk_ratio"],
         result=session_result["result"],
         frame_results=frame_results,
+        session_id=db_session.id,
     )

@@ -26,3 +26,4 @@ class AnalyzeResponse(BaseModel):
     drunk_ratio: float = Field(ge=0.0, le=1.0)
     result: str  # "drunk" | "sober" | "inconclusive"
     frame_results: list[FrameResult]
+    session_id: int

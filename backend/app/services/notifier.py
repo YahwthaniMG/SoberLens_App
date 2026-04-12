@@ -8,7 +8,9 @@ y no lanza excepcion — el flujo de la app continua sin alerta.
 
 import logging
 import os
+from dotenv import load_dotenv
 
+load_dotenv()
 logger = logging.getLogger(__name__)
 
 
