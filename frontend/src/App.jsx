@@ -6,6 +6,8 @@ import FaceRegistration from './pages/FaceRegistration'
 import Dashboard from './pages/Dashboard'
 import Capture from './pages/Capture'
 import Result from './pages/Result'
+import Alert from './pages/Alert'
+import DeferredConfirm from './pages/DeferredConfirm'
 
 export default function App() {
   const { consentProcessing, faceRegistered } = useUserStore()
@@ -28,6 +30,14 @@ export default function App() {
         <Route
           path="/result"
           element={onboardingDone ? <Result /> : <Navigate to="/" replace />}
+        />
+        <Route
+          path="/alert"
+          element={onboardingDone ? <Alert /> : <Navigate to="/" replace />}
+        />
+        <Route
+          path="/confirm"
+          element={onboardingDone ? <DeferredConfirm /> : <Navigate to="/" replace />}
         />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

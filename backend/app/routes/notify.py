@@ -2,7 +2,7 @@
 backend/app/routes/notify.py
 
 POST /notify
-    Envia una alerta WhatsApp al contacto de emergencia del usuario.
+    Envia una alerta SMS al contacto de emergencia del usuario.
     Se llama desde el frontend despues de una sesion con resultado "drunk".
 
 Request:
@@ -28,7 +28,7 @@ from sqlalchemy.orm import Session as DBSession
 
 from app.db.database import get_db
 from app.db.models import Session as SessionModel, User
-from app.services.notifier import send_whatsapp_alert
+from app.services.notifier import send_sms_alert
 
 logger = logging.getLogger(__name__)
 
@@ -55,12 +55,10 @@ def notify(
     x_device_id: str = Header(..., alias="X-Device-ID"),
     db: DBSession = Depends(get_db),
 ):
-    # Verificar que el usuario existe
     user = db.query(User).filter(User.device_id == x_device_id).first()
     if user is None:
         raise HTTPException(status_code=404, detail="Usuario no encontrado.")
 
-    # Verificar que la sesion pertenece al usuario
     session = (
         db.query(SessionModel)
         .filter(SessionModel.id == body.session_id, SessionModel.user_id == user.id)
@@ -69,22 +67,19 @@ def notify(
     if session is None:
         raise HTTPException(status_code=404, detail="Sesion no encontrada.")
 
-    # Determinar numero de contacto: prioridad al enviado en el body
     contact = body.emergency_contact or user.emergency_contact
     if not contact:
         raise HTTPException(
             status_code=422,
-            detail="No hay contacto de emergencia configurado. "
-            "Registra uno en el perfil o envialo en el body.",
+            detail="No hay contacto de emergencia configurado.",
         )
 
-    # Guardar contacto en el usuario si no tenia uno
     if body.emergency_contact and not user.emergency_contact:
         user.emergency_contact = body.emergency_contact
         db.commit()
 
     message = _build_message(session)
-    sent = send_whatsapp_alert(contact, message)
+    sent = send_sms_alert(contact, message)
 
     return {
         "sent": sent,

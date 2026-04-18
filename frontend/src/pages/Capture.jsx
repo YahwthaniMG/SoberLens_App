@@ -95,7 +95,11 @@ export default function Capture() {
     try {
       const result = await analyzeFrames(frames)
       stopCamera(streamRef.current)
-      navigate('/result', { state: { result } })
+      if (result.result === 'drunk') {
+        navigate('/alert', { state: { result } })
+      } else {
+        navigate('/result', { state: { result } })
+      }
     } catch (err) {
       setErrorMsg(err.message || 'Error al analizar los frames. Intenta de nuevo.')
       setState(STATE.ERROR)

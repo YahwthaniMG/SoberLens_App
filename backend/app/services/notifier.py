@@ -1,7 +1,7 @@
 """
 backend/app/services/notifier.py
 
-Envio de alertas WhatsApp via Twilio Sandbox.
+Envio de alertas SMS via Twilio Messaging Service.
 Si las credenciales no estan configuradas, registra un warning
 y no lanza excepcion — el flujo de la app continua sin alerta.
 """
@@ -10,13 +10,13 @@ import logging
 import os
 from dotenv import load_dotenv
 
-load_dotenv()
 logger = logging.getLogger(__name__)
+load_dotenv()
 
 
-def send_whatsapp_alert(to_number: str, message: str) -> bool:
+def send_sms_alert(to_number: str, message: str) -> bool:
     """
-    Envia un mensaje WhatsApp al contacto de emergencia.
+    Envia un SMS al contacto de emergencia via Twilio Messaging Service.
 
     Args:
         to_number: numero destino en formato internacional (ej: +521234567890)
@@ -26,12 +26,13 @@ def send_whatsapp_alert(to_number: str, message: str) -> bool:
     """
     account_sid = os.getenv("TWILIO_ACCOUNT_SID", "")
     auth_token = os.getenv("TWILIO_AUTH_TOKEN", "")
-    from_number = os.getenv("TWILIO_WHATSAPP_FROM", "whatsapp:+14155238886")
+    messaging_service_sid = os.getenv("TWILIO_MESSAGING_SERVICE_SID", "")
 
-    if not account_sid or not auth_token:
+    if not account_sid or not auth_token or not messaging_service_sid:
         logger.warning(
-            "Twilio no configurado — alerta WhatsApp omitida. "
-            "Agrega TWILIO_ACCOUNT_SID y TWILIO_AUTH_TOKEN al .env"
+            "Twilio no configurado — alerta SMS omitida. "
+            "Agrega TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN y "
+            "TWILIO_MESSAGING_SERVICE_SID al .env"
         )
         return False
 
@@ -40,12 +41,12 @@ def send_whatsapp_alert(to_number: str, message: str) -> bool:
 
         client = Client(account_sid, auth_token)
         client.messages.create(
-            from_=from_number,
-            to=f"whatsapp:{to_number}",
+            messaging_service_sid=messaging_service_sid,
+            to=to_number,
             body=message,
         )
-        logger.info("Alerta WhatsApp enviada a %s", to_number)
+        logger.info("Alerta SMS enviada a %s", to_number)
         return True
     except Exception as exc:
-        logger.error("Error enviando alerta WhatsApp: %s", exc)
+        logger.error("Error enviando alerta SMS: %s", exc)
         return False

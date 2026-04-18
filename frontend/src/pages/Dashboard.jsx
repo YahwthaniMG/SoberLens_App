@@ -190,9 +190,20 @@ export default function Dashboard() {
       )}
 
       {/* Boton principal */}
-      <div style={{ padding: '4px 16px 40px' }}>
+      <div style={{ padding: '4px 16px 16px' }}>
         <button className="btn-primary" onClick={() => navigate('/capture')}>
           Iniciar verificación
+        </button>
+      </div>
+
+      {/* Confirmacion diferida */}
+      <div style={{ padding: '0 16px 40px' }}>
+        <button
+          className="btn-outline"
+          onClick={() => navigate('/confirm')}
+          style={{ fontSize: 13 }}
+        >
+          Confirmar resultado anterior
         </button>
       </div>
     </div>
