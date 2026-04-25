@@ -29,7 +29,7 @@ export default function Onboarding() {
   }
 
   function handleExistingAccount() {
-    navigate('/register')
+    navigate('/recover')
   }
 
   const timeStr = now.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })

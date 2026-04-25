@@ -42,14 +42,16 @@ class User(Base):
         String(128), unique=True, index=True, nullable=False
     )
 
+    # Perfil del usuario
+    name: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    age_range: Mapped[str | None] = mapped_column(String(16), nullable=True)
+
     # Embedding facial de referencia serializado como JSON
     # Ej: "[0.123, -0.456, ...]"  — vector de 478*2 floats
     face_embedding: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Contacto de emergencia para alertas WhatsApp
     emergency_contact: Mapped[str | None] = mapped_column(String(32), nullable=True)
-
-    # Nombre del contacto de emergencia
     emergency_contact_name: Mapped[str | None] = mapped_column(
         String(64), nullable=True
     )
@@ -80,25 +82,18 @@ class Session(Base):
         Integer, ForeignKey("users.id"), nullable=False, index=True
     )
 
-    # Resultado de la votacion por mayoria
-    result: Mapped[str] = mapped_column(
-        String(16), nullable=False
-    )  # "drunk" | "sober" | "inconclusive"
+    result: Mapped[str] = mapped_column(String(16), nullable=False)
     drunk_ratio: Mapped[float] = mapped_column(Float, nullable=False)
     total_frames: Mapped[int] = mapped_column(Integer, nullable=False)
     analyzed_frames: Mapped[int] = mapped_column(Integer, nullable=False)
     drunk_votes: Mapped[int] = mapped_column(Integer, nullable=False)
     sober_votes: Mapped[int] = mapped_column(Integer, nullable=False)
 
-    # Confirmacion diferida (pantalla 08)
-    # None = pendiente, True = resultado correcto, False = resultado incorrecto
     user_confirmed: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     confirmed_at: Mapped[datetime.datetime | None] = mapped_column(
         DateTime, nullable=True
     )
 
-    # Flag para re-entrenamiento: solo sesiones con drunk_ratio >= 0.80
-    # y user_confirmed=True califican
     retraining_candidate: Mapped[bool] = mapped_column(
         Boolean, default=False, nullable=False
     )
@@ -123,15 +118,10 @@ class Consent(Base):
         Integer, ForeignKey("users.id"), unique=True, nullable=False
     )
 
-    # Checkbox obligatorio: acepta que los frames se procesen y eliminen
     accepted_processing: Mapped[bool] = mapped_column(Boolean, nullable=False)
-
-    # Checkbox opcional: acepta contribuir sesiones anonimizadas para re-entrenamiento
     accepted_retraining: Mapped[bool] = mapped_column(
         Boolean, default=False, nullable=False
     )
-
-    # Permite cambiar el consentimiento opcional desde Ajustes
     retraining_updated_at: Mapped[datetime.datetime | None] = mapped_column(
         DateTime, nullable=True
     )

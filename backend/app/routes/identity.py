@@ -204,3 +204,69 @@ def update_contact(
         "emergency_contact": user.emergency_contact,
         "emergency_contact_name": user.emergency_contact_name,
     }
+
+
+@router.post("/recover")
+def recover(
+    frame: UploadFile = File(..., description="Frame para identificar al usuario"),
+    db: Session = Depends(get_db),
+    svc: IdentityService = Depends(get_identity_service),
+):
+    """
+    Busca al usuario por similitud facial contra todos los embeddings registrados.
+    Usado en el flujo 'Ya tengo cuenta — registrar en este dispositivo'.
+
+    Si encuentra un usuario con similitud >= threshold, retorna sus datos
+    y el device_id original para que el frontend lo adopte.
+    Si no encuentra coincidencia, retorna 404.
+    """
+    bgr = _decode_frame(frame)
+    embedding_current = svc.extract_embedding(bgr)
+
+    if embedding_current is None:
+        raise HTTPException(
+            status_code=422,
+            detail="No se detecto cara en la imagen. Intenta con mejor iluminacion.",
+        )
+
+    threshold = float(os.getenv("EMBEDDING_SIMILARITY_THRESHOLD", 0.75))
+
+    # Buscar en todos los usuarios con embedding registrado
+    users_with_embedding = db.query(User).filter(User.face_embedding.isnot(None)).all()
+
+    best_user = None
+    best_similarity = 0.0
+
+    for candidate in users_with_embedding:
+        embedding_ref = svc.deserialize(candidate.face_embedding)
+        similarity = svc.cosine_similarity(embedding_ref, embedding_current)
+        if similarity > best_similarity:
+            best_similarity = similarity
+            best_user = candidate
+
+    if best_user is None or best_similarity < threshold:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "error": "user_not_found",
+                "message": "No se encontro ningun usuario registrado con ese rostro. "
+                "Verifica que eres el usuario correcto o crea una cuenta nueva.",
+                "best_similarity": round(best_similarity, 4),
+            },
+        )
+
+    logger.info(
+        "Recuperacion exitosa: user_id=%d similarity=%.4f",
+        best_user.id,
+        best_similarity,
+    )
+
+    return {
+        "found": True,
+        "device_id": best_user.device_id,
+        "name": best_user.name,
+        "age_range": best_user.age_range,
+        "emergency_contact": best_user.emergency_contact,
+        "emergency_contact_name": best_user.emergency_contact_name,
+        "similarity": round(best_similarity, 4),
+    }

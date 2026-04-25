@@ -155,3 +155,20 @@ export async function sendAlert(sessionId, emergencyContact, emergencyContactNam
   }
   return res.json()
 }
+
+export async function recoverAccount(imageBlob) {
+  const form = new FormData()
+  form.append('frame', imageBlob, 'face.jpg')
+
+  const res = await fetch(`${BASE_URL}/identity/recover`, {
+    method: 'POST',
+    headers: headers(),  // sin Content-Type, multipart lo pone solo
+    body: form,
+  })
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(parseErrorMessage(err.detail, `Error ${res.status}`))
+  }
+  return res.json()
+}

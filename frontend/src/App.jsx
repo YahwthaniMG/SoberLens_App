@@ -10,6 +10,7 @@ import Result from './pages/Result'
 import Alert from './pages/Alert'
 import DeferredConfirm from './pages/DeferredConfirm'
 import Schedule from './pages/Schedule'
+import DeviceRecovery from './pages/DeviceRecovery'
 
 export default function App() {
   const { consentProcessing, faceRegistered } = useUserStore()
@@ -46,6 +47,7 @@ export default function App() {
           path="/schedule"
           element={onboardingDone ? <Schedule /> : <Navigate to="/" replace />}
         />
+        <Route path="/recover" element={<DeviceRecovery />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </div>
