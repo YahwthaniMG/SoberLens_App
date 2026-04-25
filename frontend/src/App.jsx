@@ -2,6 +2,7 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import useUserStore from './store/userStore'
 import Onboarding from './pages/Onboarding'
 import Consent from './pages/Consent'
+import Profile from './pages/Profile'
 import FaceRegistration from './pages/FaceRegistration'
 import Dashboard from './pages/Dashboard'
 import Capture from './pages/Capture'
@@ -18,6 +19,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Onboarding />} />
         <Route path="/consent" element={<Consent />} />
+        <Route path="/profile" element={<Profile />} />
         <Route path="/register" element={<FaceRegistration />} />
         <Route
           path="/dashboard"

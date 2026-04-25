@@ -18,7 +18,13 @@ export default function Alert() {
     return null
   }
 
+  const isCaution = result.result === 'caution'
   const pct = Math.round(result.drunk_ratio * 100)
+  const accentColor = isCaution ? 'var(--amber)' : 'var(--red)'
+  const titleText = isCaution ? 'Signos de precaución' : 'Intoxicación detectada'
+  const bodyText = isCaution
+    ? 'El análisis detectó signos de fatiga o alcohol leve. Considera si es necesario alertar a alguien.'
+    : 'El análisis detectó signos de intoxicación. Considera no conducir y avisa a alguien de confianza.'
 
   async function handleSendAlert() {
     setAlertLoading(true)
@@ -46,35 +52,34 @@ export default function Alert() {
         padding: '28px 28px 24px',
         display: 'flex', flexDirection: 'column', alignItems: 'center',
         textAlign: 'center',
-        background: 'linear-gradient(180deg, rgba(248,81,73,0.12) 0%, transparent 100%)',
+        background: `linear-gradient(180deg, ${isCaution ? 'rgba(210,153,34,0.12)' : 'rgba(248,81,73,0.12)'} 0%, transparent 100%)`,
       }}>
-        {/* Icono pulsante */}
         <div style={{ position: 'relative', marginBottom: 20 }}>
           <div style={{
             position: 'absolute', inset: -12, borderRadius: '50%',
-            background: 'rgba(248,81,73,0.15)',
+            background: isCaution ? 'rgba(210,153,34,0.15)' : 'rgba(248,81,73,0.15)',
             animation: 'pulse 2s ease-in-out infinite',
           }} />
           <div style={{
             width: 72, height: 72, borderRadius: '50%',
-            background: 'rgba(248,81,73,0.2)',
-            border: '2px solid var(--red)',
+            background: isCaution ? 'rgba(210,153,34,0.2)' : 'rgba(248,81,73,0.2)',
+            border: `2px solid ${accentColor}`,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             position: 'relative',
           }}>
             <svg width="32" height="32" viewBox="0 0 32 32" fill="none"
-              stroke="var(--red)" strokeWidth="2.5" strokeLinecap="round">
+              stroke={accentColor} strokeWidth="2.5" strokeLinecap="round">
               <path d="M16 4l12 22H4L16 4z"/>
               <path d="M16 14v5M16 22v1"/>
             </svg>
           </div>
         </div>
 
-        <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--red)', letterSpacing: -0.5, marginBottom: 8 }}>
-          Intoxicación detectada
+        <div style={{ fontSize: 26, fontWeight: 800, color: accentColor, letterSpacing: -0.5, marginBottom: 8 }}>
+          {titleText}
         </div>
         <div style={{ fontSize: 13, color: 'var(--g1)', lineHeight: 1.6, maxWidth: 260 }}>
-          El análisis detectó signos de intoxicación. Considera no conducir y avisa a alguien de confianza.
+          {bodyText}
         </div>
       </div>
 

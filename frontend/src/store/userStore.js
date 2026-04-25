@@ -1,6 +1,5 @@
 import { create } from 'zustand'
 
-// Genera o recupera el device_id del localStorage
 function getOrCreateDeviceId() {
   let id = localStorage.getItem('soberlens_device_id')
   if (!id) {
@@ -10,35 +9,71 @@ function getOrCreateDeviceId() {
   return id
 }
 
+function loadConsent(deviceId) {
+  try {
+    const raw = localStorage.getItem(`soberlens_consent_${deviceId}`)
+    return raw ? JSON.parse(raw) : { processing: false, retraining: false }
+  } catch {
+    return { processing: false, retraining: false }
+  }
+}
+
+const deviceId = getOrCreateDeviceId()
+const consent = loadConsent(deviceId)
+
 const useUserStore = create((set, get) => ({
-  // Identidad
-  deviceId: getOrCreateDeviceId(),
+  deviceId,
 
-  // Consentimientos
-  consentProcessing: false,   // obligatorio
-  consentRetraining: false,   // opcional
+  consentProcessing: consent.processing,
+  consentRetraining: consent.retraining,
 
-  // Perfil
-  emergencyContact: localStorage.getItem('soberlens_contact') || '',
-  faceRegistered: localStorage.getItem('soberlens_face_registered') === 'true',
+  emergencyContact: localStorage.getItem(`soberlens_contact_${deviceId}`) || '',
+  faceRegistered: localStorage.getItem(`soberlens_face_${deviceId}`) === 'true',
+  name: localStorage.getItem(`soberlens_name_${deviceId}`) || '',
+  ageRange: localStorage.getItem(`soberlens_age_${deviceId}`) || '',
 
-  // Acciones
-  setConsent: (processing, retraining) => set({
-    consentProcessing: processing,
-    consentRetraining: retraining,
-  }),
+  setProfile: (name, ageRange) => {
+    const id = get().deviceId
+    localStorage.setItem(`soberlens_name_${id}`, name)
+    localStorage.setItem(`soberlens_age_${id}`, ageRange)
+    set({ name, ageRange })
+  },
+
+  setConsent: (processing, retraining) => {
+    const id = get().deviceId
+    localStorage.setItem(
+      `soberlens_consent_${id}`,
+      JSON.stringify({ processing, retraining })
+    )
+    set({ consentProcessing: processing, consentRetraining: retraining })
+  },
 
   setEmergencyContact: (contact) => {
-    localStorage.setItem('soberlens_contact', contact)
+    const id = get().deviceId
+    localStorage.setItem(`soberlens_contact_${id}`, contact)
     set({ emergencyContact: contact })
   },
 
   setFaceRegistered: (value) => {
-    localStorage.setItem('soberlens_face_registered', String(value))
+    const id = get().deviceId
+    localStorage.setItem(`soberlens_face_${id}`, String(value))
     set({ faceRegistered: value })
   },
 
-  // Verifica si el usuario completo el onboarding
+  // Crea un perfil nuevo con un device_id diferente.
+  // Usado cuando otro usuario quiere registrarse en el mismo navegador.
+  switchToNewProfile: () => {
+    const newId = crypto.randomUUID()
+    localStorage.setItem('soberlens_device_id', newId)
+    set({
+      deviceId: newId,
+      consentProcessing: false,
+      consentRetraining: false,
+      emergencyContact: '',
+      faceRegistered: false,
+    })
+  },
+
   isOnboardingComplete: () => {
     const s = get()
     return s.consentProcessing && s.faceRegistered

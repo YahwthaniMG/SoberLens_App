@@ -501,7 +501,12 @@ class Predictor:
         sober_votes = len(analyzed) - drunk_votes
         drunk_ratio = drunk_votes / len(analyzed)
 
-        result = "drunk" if drunk_ratio >= VOTE_THRESHOLD else "sober"
+        if drunk_ratio >= VOTE_THRESHOLD:
+            result = "drunk"
+        elif drunk_ratio >= 0.40:
+            result = "caution"
+        else:
+            result = "sober"
 
         return {
             "total_frames": len(bgr_frames),

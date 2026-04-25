@@ -1,13 +1,43 @@
 import { useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import useUserStore from '../store/userStore'
+
+function useRealTime() {
+  const [time, setTime] = useState(new Date())
+  useEffect(() => {
+    const t = setInterval(() => setTime(new Date()), 1000)
+    return () => clearInterval(t)
+  }, [])
+  return time
+}
 
 export default function Onboarding() {
   const navigate = useNavigate()
+  const now = useRealTime()
+  const { consentProcessing, faceRegistered, switchToNewProfile } = useUserStore()
+  const hasAccount = consentProcessing && faceRegistered
+
+  useEffect(() => {
+    if (hasAccount) navigate('/dashboard', { replace: true })
+  }, [])
+
+  if (hasAccount) return null
+
+  function handleNewUser() {
+    if (consentProcessing || faceRegistered) switchToNewProfile()
+    navigate('/consent')
+  }
+
+  function handleExistingAccount() {
+    navigate('/register')
+  }
+
+  const timeStr = now.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })
 
   return (
     <div className="screen fade-up" style={{ background: 'var(--dark)' }}>
-      {/* Status bar */}
       <div className="status-bar" style={{ color: 'var(--g1)' }}>
-        <span style={{ fontFamily: 'var(--mono)' }}>9:41</span>
+        <span style={{ fontFamily: 'var(--mono)' }}>{timeStr}</span>
         <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
           <svg width="12" height="9" viewBox="0 0 12 9" fill="var(--g1)">
             <rect x="0" y="3" width="2" height="6" rx="1"/>
@@ -23,16 +53,11 @@ export default function Onboarding() {
         </div>
       </div>
 
-      {/* Hero */}
       <div style={{
         flex: 1,
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        padding: '20px 28px 0',
-        textAlign: 'center',
+        display: 'flex', flexDirection: 'column', alignItems: 'center',
+        padding: '20px 28px 0', textAlign: 'center',
       }}>
-        {/* Logo */}
         <div style={{
           width: 80, height: 80, borderRadius: 24,
           background: 'linear-gradient(135deg, var(--teal), var(--teal-d))',
@@ -55,7 +80,6 @@ export default function Onboarding() {
           Monitoreo inteligente para que disfrutes con seguridad
         </div>
 
-        {/* Pasos */}
         <div style={{ width: '100%', marginBottom: 24 }}>
           {[
             {
@@ -117,13 +141,12 @@ export default function Onboarding() {
         </div>
       </div>
 
-      {/* Footer */}
       <div style={{ padding: '0 28px 40px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <button className="btn-primary" onClick={() => navigate('/consent')}>
+        <button className="btn-primary" onClick={handleNewUser}>
           Comenzar configuración
         </button>
-        <button className="btn-ghost" onClick={() => navigate('/dashboard')}>
-          Ya tengo cuenta
+        <button className="btn-ghost" onClick={handleExistingAccount}>
+          Ya tengo cuenta — registrar en este dispositivo
         </button>
       </div>
     </div>

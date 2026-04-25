@@ -95,7 +95,7 @@ export default function Capture() {
     try {
       const result = await analyzeFrames(frames)
       stopCamera(streamRef.current)
-      if (result.result === 'drunk') {
+      if (result.result === 'drunk' || result.result === 'caution') {
         navigate('/alert', { state: { result } })
       } else {
         navigate('/result', { state: { result } })

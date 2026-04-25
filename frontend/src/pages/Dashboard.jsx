@@ -3,9 +3,52 @@ import { useNavigate } from 'react-router-dom'
 import useUserStore from '../store/userStore'
 import { getSessions } from '../services/api'
 
+function useRealTime() {
+  const [time, setTime] = useState(new Date())
+  useEffect(() => {
+    const t = setInterval(() => setTime(new Date()), 1000)
+    return () => clearInterval(t)
+  }, [])
+  return time
+}
+
+function resultColor(result) {
+  if (result === 'drunk') return 'var(--red)'
+  if (result === 'caution') return 'var(--amber)'
+  if (result === 'sober') return 'var(--teal)'
+  return 'var(--g1)'
+}
+
+function resultLabel(result) {
+  if (result === 'drunk') return 'Ebrio'
+  if (result === 'caution') return 'Precaución'
+  if (result === 'sober') return 'Sobrio'
+  return 'Sin datos'
+}
+
+function resultDesc(result) {
+  if (result === 'drunk') return 'Se detectaron signos claros de intoxicación.'
+  if (result === 'caution') return 'Posibles signos de fatiga o alcohol leve.'
+  if (result === 'sober') return 'No se detectaron signos de intoxicación.'
+  return 'Realiza tu primera verificación'
+}
+
+function statusGradient(result) {
+  if (result === 'drunk') return 'linear-gradient(135deg, #C0392B, #922B21)'
+  if (result === 'caution') return 'linear-gradient(135deg, #D4A017, #9A7D0A)'
+  return 'linear-gradient(135deg, #00C9A7, #00856F)'
+}
+
+function statusDot(result) {
+  if (result === 'drunk') return '#FF8A80'
+  if (result === 'caution') return '#FFE082'
+  return '#7DFFDE'
+}
+
 export default function Dashboard() {
   const navigate = useNavigate()
-  const { emergencyContact, setEmergencyContact } = useUserStore()
+  const now = useRealTime()
+  const { emergencyContact, setEmergencyContact, name } = useUserStore()
 
   const [sessions, setSessions] = useState([])
   const [loading, setLoading] = useState(true)
@@ -21,23 +64,12 @@ export default function Dashboard() {
 
   const totalSessions = sessions.length
   const drunkSessions = sessions.filter(s => s.result === 'drunk').length
+  const cautionSessions = sessions.filter(s => s.result === 'caution').length
   const lastSession = sessions[0] || null
 
   function saveContact() {
     setEmergencyContact(contactInput.trim())
     setEditingContact(false)
-  }
-
-  function resultColor(result) {
-    if (result === 'drunk') return 'var(--red)'
-    if (result === 'sober') return 'var(--teal)'
-    return 'var(--g1)'
-  }
-
-  function resultLabel(result) {
-    if (result === 'drunk') return 'Ebrio'
-    if (result === 'sober') return 'Sobrio'
-    return 'Inconcluso'
   }
 
   function formatDate(iso) {
@@ -48,6 +80,9 @@ export default function Dashboard() {
     })
   }
 
+  const timeStr = now.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })
+  const currentResult = lastSession?.result || null
+
   return (
     <div className="screen" style={{ background: 'var(--g3)', overflowY: 'auto' }}>
       {/* Header */}
@@ -56,35 +91,50 @@ export default function Dashboard() {
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
       }}>
         <div>
-          <div style={{ fontSize: 11, color: 'var(--g1)' }}>Bienvenido</div>
-          <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--dark)' }}>SoberLens</div>
+          <div style={{ fontSize: 11, color: 'var(--g1)' }}>
+            {now.toLocaleDateString('es-MX', { weekday: 'long', day: '2-digit', month: 'long' })}
+          </div>
+          <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--dark)' }}>
+            {name ? `Hola, ${name.split(' ')[0]}` : 'SoberLens'}
+          </div>
         </div>
         <div style={{
-          width: 38, height: 38, borderRadius: '50%',
-          background: 'var(--teal-l)', border: '2px solid var(--teal)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 14, fontWeight: 700, color: 'var(--teal-d)',
-        }}>SL</div>
+          fontFamily: 'var(--mono)', fontSize: 13, fontWeight: 600,
+          color: 'var(--dark2)', background: 'var(--g3)',
+          padding: '4px 10px', borderRadius: 8,
+        }}>
+          {timeStr}
+        </div>
       </div>
 
       {/* Status card */}
       <div style={{
         margin: '12px 16px', borderRadius: 20, padding: 18,
-        background: 'linear-gradient(135deg, #00C9A7, #00856F)',
-        boxShadow: '0 8px 24px rgba(0,201,167,.3)', color: 'white',
+        background: statusGradient(currentResult),
+        boxShadow: currentResult === 'drunk'
+          ? '0 8px 24px rgba(248,81,73,.3)'
+          : currentResult === 'caution'
+          ? '0 8px 24px rgba(210,153,34,.3)'
+          : '0 8px 24px rgba(0,201,167,.3)',
+        color: 'white',
+        transition: 'background 0.5s',
       }}>
         <div style={{ fontSize: 9, fontWeight: 600, letterSpacing: 2, textTransform: 'uppercase', opacity: 0.8, marginBottom: 8 }}>
           Estado actual
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-          <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#7DFFDE', boxShadow: '0 0 8px #7DFFDE' }} />
+          <div style={{
+            width: 10, height: 10, borderRadius: '50%',
+            background: statusDot(currentResult),
+            boxShadow: `0 0 8px ${statusDot(currentResult)}`,
+          }} />
           <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: -1 }}>
-            {lastSession ? resultLabel(lastSession.result) : 'Sin datos'}
+            {currentResult ? resultLabel(currentResult) : 'Sin datos'}
           </div>
         </div>
         <div style={{ fontSize: 10, opacity: 0.75 }}>
           {lastSession
-            ? `Última verificación: ${formatDate(lastSession.created_at)}`
+            ? `${resultDesc(currentResult)} · ${formatDate(lastSession.created_at)}`
             : 'Realiza tu primera verificación'}
         </div>
       </div>
@@ -93,19 +143,14 @@ export default function Dashboard() {
       <div style={{ margin: '0 16px 12px', display: 'flex', gap: 8 }}>
         {[
           { val: totalSessions, label: 'Verificaciones' },
-          { val: drunkSessions, label: 'Alertas' },
-          {
-            val: totalSessions > 0
-              ? `${Math.round((1 - drunkSessions / totalSessions) * 100)}%`
-              : '--',
-            label: 'Sobrio',
-          },
+          { val: drunkSessions, label: 'Alertas', color: drunkSessions > 0 ? 'var(--red)' : 'var(--dark)' },
+          { val: cautionSessions, label: 'Precaución', color: cautionSessions > 0 ? 'var(--amber)' : 'var(--dark)' },
         ].map((stat, i) => (
           <div key={i} style={{
             flex: 1, background: 'var(--white)', borderRadius: 14,
             padding: 12, textAlign: 'center',
           }}>
-            <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--dark)' }}>{stat.val}</div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: stat.color || 'var(--dark)' }}>{stat.val}</div>
             <div style={{ fontSize: 9, color: 'var(--g1)', marginTop: 2 }}>{stat.label}</div>
           </div>
         ))}
@@ -189,20 +234,14 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Boton principal */}
+      {/* Botones */}
       <div style={{ padding: '4px 16px 16px' }}>
         <button className="btn-primary" onClick={() => navigate('/capture')}>
           Iniciar verificación
         </button>
       </div>
-
-      {/* Confirmacion diferida */}
       <div style={{ padding: '0 16px 40px' }}>
-        <button
-          className="btn-outline"
-          onClick={() => navigate('/confirm')}
-          style={{ fontSize: 13 }}
-        >
+        <button className="btn-outline" onClick={() => navigate('/confirm')} style={{ fontSize: 13 }}>
           Confirmar resultado anterior
         </button>
       </div>

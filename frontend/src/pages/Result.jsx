@@ -19,19 +19,24 @@ export default function Result() {
   }
 
   const isDrunk = result.result === 'drunk'
+  const isCaution = result.result === 'caution'
   const isInconclusive = result.result === 'inconclusive'
   const pct = Math.round(result.drunk_ratio * 100)
 
-  const accentColor = isDrunk ? 'var(--red)' : isInconclusive ? 'var(--amber)' : 'var(--teal)'
+  const accentColor = isDrunk ? 'var(--red)' : isCaution ? 'var(--amber)' : isInconclusive ? 'var(--g1)' : 'var(--teal)'
   const bgGradient = isDrunk
     ? 'linear-gradient(135deg, #2D1117, #0D1117)'
+    : isCaution
+    ? 'linear-gradient(135deg, #1A1200, #0D1117)'
     : isInconclusive
-    ? 'linear-gradient(135deg, #1A1500, #0D1117)'
+    ? 'linear-gradient(135deg, #161B22, #0D1117)'
     : 'linear-gradient(135deg, #0D2117, #0D1117)'
 
-  const resultLabel = isDrunk ? 'Ebrio' : isInconclusive ? 'Inconcluso' : 'Sobrio'
+  const resultLabel = isDrunk ? 'Ebrio' : isCaution ? 'Precaución' : isInconclusive ? 'Inconcluso' : 'Sobrio'
   const resultDesc = isDrunk
-    ? 'Se detectaron signos de intoxicación en la mayoría de los frames.'
+    ? 'Se detectaron signos claros de intoxicación en la mayoría de los frames.'
+    : isCaution
+    ? 'Si has consumido alcohol está empezando a hacer efecto. De lo contrario, podrías estar bajo un estado de agotamiento.'
     : isInconclusive
     ? 'No se pudieron analizar suficientes frames. Intenta de nuevo.'
     : 'No se detectaron signos significativos de intoxicación.'
@@ -79,9 +84,15 @@ export default function Result() {
               <circle cx="18" cy="18" r="14"/>
               <path d="M18 10v8M18 24v1"/>
             </svg>
-          ) : isInconclusive ? (
+          ) : isCaution ? (
             <svg width="36" height="36" viewBox="0 0 36 36" fill="none"
               stroke="var(--amber)" strokeWidth="2.5" strokeLinecap="round">
+              <path d="M18 4l14 24H4L18 4z"/>
+              <path d="M18 14v7M18 24v1"/>
+            </svg>
+          ) : isInconclusive ? (
+            <svg width="36" height="36" viewBox="0 0 36 36" fill="none"
+              stroke="var(--g1)" strokeWidth="2.5" strokeLinecap="round">
               <circle cx="18" cy="18" r="14"/>
               <path d="M18 10v8M18 24v1"/>
             </svg>

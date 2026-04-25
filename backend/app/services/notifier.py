@@ -1,45 +1,92 @@
 """
 backend/app/services/notifier.py
 
-Envio de alertas SMS via Twilio Messaging Service.
-Si las credenciales no estan configuradas, registra un warning
-y no lanza excepcion — el flujo de la app continua sin alerta.
+Envio de alertas via Twilio.
+Estrategia:
+  1. Intenta WhatsApp Business con plantilla aprobada.
+  2. Si falla, cae a SMS via Messaging Service.
 """
 
+from dotenv import load_dotenv
 import logging
 import os
-from dotenv import load_dotenv
 
 logger = logging.getLogger(__name__)
 load_dotenv()
 
 
-def send_sms_alert(to_number: str, message: str) -> bool:
+def _normalize_mx_number(number: str) -> str:
     """
-    Envia un SMS al contacto de emergencia via Twilio Messaging Service.
-
-    Args:
-        to_number: numero destino en formato internacional (ej: +521234567890)
-        message:   texto del mensaje
-
-    Retorna True si el mensaje se envio, False si fallo o no hay credenciales.
+    Normaliza numeros mexicanos para WhatsApp.
+    WhatsApp requiere +52 1 XXXXXXXXXX (10 digitos con el 1 despues del 52).
+    Si el numero tiene 10 digitos locales o le falta el 1, lo agrega.
     """
-    account_sid = os.getenv("TWILIO_ACCOUNT_SID", "")
-    auth_token = os.getenv("TWILIO_AUTH_TOKEN", "")
+    # Quitar espacios y guiones
+    n = number.strip().replace(" ", "").replace("-", "")
+
+    # Si ya tiene el formato correcto, retornar tal cual
+    if n.startswith("+521") and len(n) == 13:
+        return n
+
+    # +5233... -> +52133... (le falta el 1)
+    if n.startswith("+52") and len(n) == 12:
+        return "+521" + n[3:]
+
+    # 10 digitos locales -> +521...
+    if n.startswith("33") or n.startswith("55") or n.startswith("81"):
+        if len(n) == 10:
+            return "+521" + n
+
+    # Para otros paises o formatos ya correctos, retornar sin modificar
+    return n
+
+
+def _send_whatsapp(client, to_number: str, contact_name: str, pct: int) -> bool:
+    """
+    Envia via WhatsApp Business usando plantilla aprobada.
+    La plantilla es:
+      Alerta SoberLens: {{1}} puede estar en estado de intoxicacion.
+      La verificacion detecto intoxicacion en {{2}}% de los analisis.
+      Por favor comunicate con el/ella.
+    """
+    from_number = os.getenv("TWILIO_WHATSAPP_FROM", "")
+    template_sid = os.getenv("TWILIO_WHATSAPP_TEMPLATE_SID", "")
+
+    if not from_number or not template_sid:
+        return False
+
+    normalized = _normalize_mx_number(to_number)
+    to_wa = (
+        normalized if normalized.startswith("whatsapp:") else f"whatsapp:{normalized}"
+    )
+    from_wa = (
+        from_number
+        if from_number.startswith("whatsapp:")
+        else f"whatsapp:{from_number}"
+    )
+
+    try:
+        client.messages.create(
+            from_=from_wa,
+            to=to_wa,
+            content_sid=template_sid,
+            content_variables=f'{{"1": "{contact_name}", "2": "{pct}"}}',
+        )
+        logger.info("Alerta WhatsApp enviada a %s", normalized)
+        return True
+    except Exception as exc:
+        logger.warning("WhatsApp fallo, intentando SMS: %s", exc)
+        return False
+
+
+def _send_sms(client, to_number: str, message: str) -> bool:
+    """Envia SMS via Messaging Service como fallback."""
     messaging_service_sid = os.getenv("TWILIO_MESSAGING_SERVICE_SID", "")
 
-    if not account_sid or not auth_token or not messaging_service_sid:
-        logger.warning(
-            "Twilio no configurado — alerta SMS omitida. "
-            "Agrega TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN y "
-            "TWILIO_MESSAGING_SERVICE_SID al .env"
-        )
+    if not messaging_service_sid:
         return False
 
     try:
-        from twilio.rest import Client
-
-        client = Client(account_sid, auth_token)
         client.messages.create(
             messaging_service_sid=messaging_service_sid,
             to=to_number,
@@ -48,5 +95,39 @@ def send_sms_alert(to_number: str, message: str) -> bool:
         logger.info("Alerta SMS enviada a %s", to_number)
         return True
     except Exception as exc:
-        logger.error("Error enviando alerta SMS: %s", exc)
+        logger.error("SMS fallo: %s", exc)
         return False
+
+
+def send_alert(
+    to_number: str, message: str, contact_name: str = "tu contacto", pct: int = 0
+) -> dict:
+    """
+    Envia alerta al contacto de emergencia.
+    Intenta WhatsApp Business primero, cae a SMS si falla.
+
+    Retorna:
+        {"sent": bool, "channel": "whatsapp" | "sms" | None}
+    """
+    account_sid = os.getenv("TWILIO_ACCOUNT_SID", "")
+    auth_token = os.getenv("TWILIO_AUTH_TOKEN", "")
+
+    if not account_sid or not auth_token:
+        logger.warning("Twilio no configurado — alerta omitida.")
+        return {"sent": False, "channel": None}
+
+    try:
+        from twilio.rest import Client
+
+        client = Client(account_sid, auth_token)
+    except Exception as exc:
+        logger.error("Error inicializando cliente Twilio: %s", exc)
+        return {"sent": False, "channel": None}
+    """
+    if _send_whatsapp(client, to_number, contact_name, pct):
+        return {"sent": True, "channel": "whatsapp"}
+    """
+    if _send_sms(client, to_number, message):
+        return {"sent": True, "channel": "sms"}
+
+    return {"sent": False, "channel": None}

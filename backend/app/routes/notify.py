@@ -2,22 +2,7 @@
 backend/app/routes/notify.py
 
 POST /notify
-    Envia una alerta SMS al contacto de emergencia del usuario.
-    Se llama desde el frontend despues de una sesion con resultado "drunk".
-
-Request:
-    Header: X-Device-ID
-    Body JSON:
-        {
-            "session_id": int,
-            "emergency_contact": str   (opcional — si no se manda usa el guardado en DB)
-        }
-
-Response:
-    {
-        "sent": bool,
-        "to": str | null
-    }
+    Envia alerta WhatsApp (con fallback a SMS) al contacto de emergencia.
 """
 
 import logging
@@ -28,7 +13,7 @@ from sqlalchemy.orm import Session as DBSession
 
 from app.db.database import get_db
 from app.db.models import Session as SessionModel, User
-from app.services.notifier import send_sms_alert
+from app.services.notifier import send_alert
 
 logger = logging.getLogger(__name__)
 
@@ -38,15 +23,6 @@ router = APIRouter(prefix="/notify")
 class NotifyRequest(BaseModel):
     session_id: int
     emergency_contact: str | None = None
-
-
-def _build_message(session: SessionModel) -> str:
-    pct = int(session.drunk_ratio * 100)
-    return (
-        f"Alerta SoberLens: tu contacto puede estar en estado de intoxicacion. "
-        f"La verificacion detecto intoxicacion en {pct}% de los frames analizados. "
-        f"Por favor comunicate con el/ella."
-    )
 
 
 @router.post("")
@@ -78,10 +54,30 @@ def notify(
         user.emergency_contact = body.emergency_contact
         db.commit()
 
-    message = _build_message(session)
-    sent = send_sms_alert(contact, message)
+    pct = int(session.drunk_ratio * 100)
+    # Mensaje de fallback para SMS
+    sms_message = (
+        f"Alerta SoberLens: tu contacto puede estar en estado de intoxicacion. "
+        f"La verificacion detecto intoxicacion en {pct}% de los frames. "
+        f"Por favor comunicate con el/ella."
+    )
+
+    result = send_alert(
+        to_number=contact,
+        message=sms_message,
+        contact_name="tu contacto",
+        pct=pct,
+    )
+
+    logger.info(
+        "Alerta enviada: session_id=%d channel=%s sent=%s",
+        body.session_id,
+        result["channel"],
+        result["sent"],
+    )
 
     return {
-        "sent": sent,
-        "to": contact if sent else None,
+        "sent": result["sent"],
+        "channel": result["channel"],
+        "to": contact if result["sent"] else None,
     }

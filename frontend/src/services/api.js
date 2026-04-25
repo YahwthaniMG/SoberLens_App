@@ -34,6 +34,19 @@ export async function analyzeFrames(frameBlobs) {
   return res.json()
 }
 
+export async function updateProfile(name, ageRange) {
+  const res = await fetch(`${BASE_URL}/identity/profile`, {
+    method: 'PATCH',
+    headers: headers({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify({ name, age_range: ageRange }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || `Error ${res.status}`)
+  }
+  return res.json()
+}
+
 // ---------------------------------------------------------------------------
 // /identity
 // ---------------------------------------------------------------------------

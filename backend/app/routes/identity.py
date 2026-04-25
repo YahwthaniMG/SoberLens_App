@@ -148,3 +148,27 @@ def verify(
         "similarity": round(similarity, 4),
         "threshold": threshold,
     }
+
+
+class ProfileRequest(BaseModel):
+    name: str
+    age_range: str
+
+
+@router.patch("/profile")
+def update_profile(
+    body: ProfileRequest,
+    x_device_id: str = Header(..., alias="X-Device-ID"),
+    db: Session = Depends(get_db),
+):
+    user = _get_or_create_user(x_device_id, db)
+    user.name = body.name.strip()
+    user.age_range = body.age_range
+    db.commit()
+    logger.info(
+        "Perfil actualizado user_id=%d name=%s age_range=%s",
+        user.id,
+        user.name,
+        user.age_range,
+    )
+    return {"updated": True, "name": user.name, "age_range": user.age_range}
