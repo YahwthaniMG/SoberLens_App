@@ -11,6 +11,12 @@ function headers(extra = {}) {
   }
 }
 
+function parseErrorMessage(detail, fallback) {
+  if (!detail) return fallback
+  if (typeof detail === 'object') return detail.message || fallback
+  return detail
+}
+
 // ---------------------------------------------------------------------------
 // /analyze
 // ---------------------------------------------------------------------------
@@ -28,8 +34,8 @@ export async function analyzeFrames(frameBlobs) {
   })
 
   if (!res.ok) {
-    const err = await res.json().catch(() => ({}))
-    throw new Error(err.detail || `Error ${res.status}`)
+  const err = await res.json().catch(() => ({}))
+  throw new Error(parseErrorMessage(err.detail, `Error ${res.status}`))
   }
   return res.json()
 }
@@ -118,20 +124,34 @@ export async function confirmSession(sessionId, correct) {
 // ---------------------------------------------------------------------------
 // /notify
 // ---------------------------------------------------------------------------
-
-export async function sendAlert(sessionId, emergencyContact) {
+export async function updateContact(phone, name) {
+  const res = await fetch(`${BASE_URL}/identity/contact`, {
+    method: 'PATCH',
+    headers: headers({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify({
+      emergency_contact: phone,
+      emergency_contact_name: name || undefined,
+    }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(parseErrorMessage(err.detail, `Error ${res.status}`))
+  }
+  return res.json()
+}
+export async function sendAlert(sessionId, emergencyContact, emergencyContactName) {
   const res = await fetch(`${BASE_URL}/notify`, {
     method: 'POST',
     headers: headers({ 'Content-Type': 'application/json' }),
     body: JSON.stringify({
       session_id: sessionId,
       emergency_contact: emergencyContact || undefined,
+      emergency_contact_name: emergencyContactName || undefined,
     }),
   })
-
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
-    throw new Error(err.detail || `Error ${res.status}`)
+    throw new Error(parseErrorMessage(err.detail, `Error ${res.status}`))
   }
   return res.json()
 }

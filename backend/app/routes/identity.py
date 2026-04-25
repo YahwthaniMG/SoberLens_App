@@ -25,6 +25,8 @@ from sqlalchemy.orm import Session
 from app.db.database import get_db
 from app.db.models import User
 from app.services.identity import IdentityService, get_identity_service
+from app.models.schemas import ProfileRequest
+from app.models.schemas import ContactRequest
 
 logger = logging.getLogger(__name__)
 
@@ -150,11 +152,6 @@ def verify(
     }
 
 
-class ProfileRequest(BaseModel):
-    name: str
-    age_range: str
-
-
 @router.patch("/profile")
 def update_profile(
     body: ProfileRequest,
@@ -164,11 +161,46 @@ def update_profile(
     user = _get_or_create_user(x_device_id, db)
     user.name = body.name.strip()
     user.age_range = body.age_range
+    if body.emergency_contact is not None:
+        user.emergency_contact = body.emergency_contact.strip()
+    if body.emergency_contact_name is not None:
+        user.emergency_contact_name = body.emergency_contact_name.strip()
     db.commit()
     logger.info(
-        "Perfil actualizado user_id=%d name=%s age_range=%s",
+        "Perfil actualizado user_id=%d name=%s age_range=%s contact_name=%s",
         user.id,
         user.name,
         user.age_range,
+        user.emergency_contact_name,
     )
-    return {"updated": True, "name": user.name, "age_range": user.age_range}
+    return {
+        "updated": True,
+        "name": user.name,
+        "age_range": user.age_range,
+        "emergency_contact": user.emergency_contact,
+        "emergency_contact_name": user.emergency_contact_name,
+    }
+
+
+@router.patch("/contact")
+def update_contact(
+    body: ContactRequest,
+    x_device_id: str = Header(..., alias="X-Device-ID"),
+    db: Session = Depends(get_db),
+):
+    user = _get_or_create_user(x_device_id, db)
+    user.emergency_contact = body.emergency_contact.strip()
+    if body.emergency_contact_name is not None:
+        user.emergency_contact_name = body.emergency_contact_name.strip()
+    db.commit()
+    logger.info(
+        "Contacto actualizado user_id=%d contact=%s name=%s",
+        user.id,
+        user.emergency_contact,
+        user.emergency_contact_name,
+    )
+    return {
+        "updated": True,
+        "emergency_contact": user.emergency_contact,
+        "emergency_contact_name": user.emergency_contact_name,
+    }

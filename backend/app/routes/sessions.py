@@ -1,15 +1,5 @@
 """
 backend/app/routes/sessions.py
-
-GET  /sessions
-    Retorna el historial de sesiones del usuario ordenado por fecha descendente.
-
-PATCH /sessions/{session_id}/confirm
-    Registra la confirmacion diferida del usuario sobre el resultado de una sesion.
-    Usado en la pantalla DeferredConfirm (pantalla 08).
-
-Ambos endpoints reciben:
-    Header: X-Device-ID (UUID generado en el frontend)
 """
 
 import datetime
@@ -25,20 +15,34 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/sessions")
 
+CONFIRM_DELAY_HOURS = 24
+
 
 def _get_user(device_id: str, db: DBSession) -> User:
     user = db.query(User).filter(User.device_id == device_id).first()
     if user is None:
-        raise HTTPException(
-            status_code=404,
-            detail="Usuario no encontrado.",
-        )
+        raise HTTPException(status_code=404, detail="Usuario no encontrado.")
     return user
 
 
-# ---------------------------------------------------------------------------
-# GET /sessions
-# ---------------------------------------------------------------------------
+def _session_dict(s: SessionModel) -> dict:
+    now = datetime.datetime.utcnow()
+    confirmable_at = s.created_at + datetime.timedelta(hours=CONFIRM_DELAY_HOURS)
+    remaining = max((confirmable_at - now).total_seconds(), 0)
+    return {
+        "id": s.id,
+        "result": s.result,
+        "drunk_ratio": s.drunk_ratio,
+        "total_frames": s.total_frames,
+        "analyzed_frames": s.analyzed_frames,
+        "drunk_votes": s.drunk_votes,
+        "sober_votes": s.sober_votes,
+        "user_confirmed": s.user_confirmed,
+        "created_at": s.created_at.isoformat(),
+        "confirmable_at": confirmable_at.isoformat(),
+        "hours_until_confirmable": round(remaining / 3600, 1),
+        "is_confirmable": remaining == 0 and s.user_confirmed is None,
+    }
 
 
 @router.get("")
@@ -48,10 +52,6 @@ def get_sessions(
     offset: int = 0,
     db: DBSession = Depends(get_db),
 ):
-    """
-    Retorna el historial de sesiones del usuario.
-    Parametros opcionales: limit (default 20) y offset (default 0) para paginacion.
-    """
     user = _get_user(x_device_id, db)
 
     sessions = (
@@ -69,26 +69,8 @@ def get_sessions(
         "total": total,
         "limit": limit,
         "offset": offset,
-        "sessions": [
-            {
-                "id": s.id,
-                "result": s.result,
-                "drunk_ratio": s.drunk_ratio,
-                "total_frames": s.total_frames,
-                "analyzed_frames": s.analyzed_frames,
-                "drunk_votes": s.drunk_votes,
-                "sober_votes": s.sober_votes,
-                "user_confirmed": s.user_confirmed,
-                "created_at": s.created_at.isoformat(),
-            }
-            for s in sessions
-        ],
+        "sessions": [_session_dict(s) for s in sessions],
     }
-
-
-# ---------------------------------------------------------------------------
-# PATCH /sessions/{session_id}/confirm
-# ---------------------------------------------------------------------------
 
 
 @router.patch("/{session_id}/confirm")
@@ -98,15 +80,6 @@ def confirm_session(
     x_device_id: str = Header(..., alias="X-Device-ID"),
     db: DBSession = Depends(get_db),
 ):
-    """
-    Registra si el usuario considera que el resultado de la sesion fue correcto.
-    Actualiza retraining_candidate si aplica:
-    - Solo sesiones con drunk_ratio >= 0.80 y correct=True califican.
-
-    Parametros:
-        session_id: ID de la sesion a confirmar
-        correct:    true si el resultado fue correcto, false si no
-    """
     user = _get_user(x_device_id, db)
 
     session = (
@@ -120,10 +93,31 @@ def confirm_session(
     if session.user_confirmed is not None:
         raise HTTPException(status_code=409, detail="Esta sesion ya fue confirmada.")
 
-    session.user_confirmed = correct
-    session.confirmed_at = datetime.datetime.utcnow()
+    now = datetime.datetime.utcnow()
+    elapsed = now - session.created_at
+    min_elapsed = datetime.timedelta(hours=CONFIRM_DELAY_HOURS)
 
-    # Candidata a re-entrenamiento: resultado de alta confianza y confirmado correcto
+    if elapsed < min_elapsed:
+        remaining = min_elapsed - elapsed
+        remaining_hours = int(remaining.total_seconds() // 3600)
+        remaining_minutes = int((remaining.total_seconds() % 3600) // 60)
+        raise HTTPException(
+            status_code=425,
+            detail={
+                "error": "confirmation_too_early",
+                "message": (
+                    f"La confirmacion estara disponible en "
+                    f"{remaining_hours}h {remaining_minutes}min. "
+                    "Queremos que hayas descansado antes de responder."
+                ),
+                "available_at": (session.created_at + min_elapsed).isoformat(),
+                "remaining_seconds": int(remaining.total_seconds()),
+            },
+        )
+
+    session.user_confirmed = correct
+    session.confirmed_at = now
+
     RETRAINING_RATIO_THRESHOLD = 0.80
     session.retraining_candidate = (
         correct and session.drunk_ratio >= RETRAINING_RATIO_THRESHOLD

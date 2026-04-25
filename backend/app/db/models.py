@@ -49,6 +49,11 @@ class User(Base):
     # Contacto de emergencia para alertas WhatsApp
     emergency_contact: Mapped[str | None] = mapped_column(String(32), nullable=True)
 
+    # Nombre del contacto de emergencia
+    emergency_contact_name: Mapped[str | None] = mapped_column(
+        String(64), nullable=True
+    )
+
     created_at: Mapped[datetime.datetime] = mapped_column(
         DateTime, default=_now, nullable=False
     )

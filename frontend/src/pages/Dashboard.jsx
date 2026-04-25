@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import useUserStore from '../store/userStore'
 import { getSessions } from '../services/api'
+import { updateContact } from '../services/api'
 
 function useRealTime() {
   const [time, setTime] = useState(new Date())
@@ -67,10 +68,23 @@ export default function Dashboard() {
   const cautionSessions = sessions.filter(s => s.result === 'caution').length
   const lastSession = sessions[0] || null
 
-  function saveContact() {
+  async function saveContact() {
+  if (!contactInput.trim()) return
+  try {
+    await updateContact(contactInput.trim(), contactNameInput.trim() || undefined)
     setEmergencyContact(contactInput.trim())
+    localStorage.setItem('soberlens_emergency_contact', contactInput.trim())
+    if (contactNameInput.trim()) {
+      setContactName(contactNameInput.trim())
+      localStorage.setItem('soberlens_contact_name', contactNameInput.trim())
+    }
     setEditingContact(false)
+    setContactInput('')
+    setContactNameInput('')
+  } catch (err) {
+    console.error('Error guardando contacto:', err)
   }
+}
 
   function formatDate(iso) {
     const d = new Date(iso)
@@ -82,6 +96,10 @@ export default function Dashboard() {
 
   const timeStr = now.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })
   const currentResult = lastSession?.result || null
+  const [contactNameInput, setContactNameInput] = useState('')
+  const [contactName, setContactName] = useState(
+    localStorage.getItem('soberlens_contact_name') || ''
+  )
 
   return (
     <div className="screen" style={{ background: 'var(--g3)', overflowY: 'auto' }}>
@@ -162,48 +180,67 @@ export default function Dashboard() {
           Contacto de emergencia
         </div>
         {editingContact ? (
-          <div style={{ display: 'flex', gap: 8 }}>
-            <input
-              value={contactInput}
-              onChange={e => setContactInput(e.target.value)}
-              placeholder="+521234567890"
-              style={{
-                flex: 1, background: 'var(--dark3)', border: '1px solid var(--teal)',
-                borderRadius: 10, padding: '8px 12px', color: 'var(--white)',
-                fontSize: 13, fontFamily: 'var(--font)', outline: 'none',
-              }}
-            />
-            <button onClick={saveContact} style={{
-              background: 'var(--teal)', color: 'var(--dark)', border: 'none',
-              borderRadius: 10, padding: '8px 14px', fontWeight: 700, fontSize: 13, cursor: 'pointer',
-            }}>
-              Guardar
-            </button>
-          </div>
-        ) : (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{
-              width: 36, height: 36, borderRadius: '50%', background: '#FFE5EA',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 14, fontWeight: 700, color: 'var(--red)', flexShrink: 0,
-            }}>
-              {emergencyContact ? emergencyContact[0].toUpperCase() : '?'}
-            </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 9, color: 'var(--g1)' }}>Contacto</div>
-              <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--dark)' }}>
-                {emergencyContact || 'No configurado'}
-              </div>
-            </div>
-            <button onClick={() => setEditingContact(true)} style={{
-              fontSize: 9, background: 'var(--teal-l)', color: 'var(--teal-d)',
-              borderRadius: 6, padding: '4px 10px', fontWeight: 600,
-              border: 'none', cursor: 'pointer',
-            }}>
-              {emergencyContact ? 'Editar' : 'Agregar'}
-            </button>
-          </div>
-        )}
+  <>
+    <input
+      value={contactNameInput}
+      onChange={e => setContactNameInput(e.target.value)}
+      placeholder="Nombre del contacto"
+      style={{
+        width: '100%', marginBottom: 8,
+        background: 'var(--dark3)', border: '1px solid var(--teal)',
+        borderRadius: 10, padding: '8px 12px', color: 'var(--white)',
+        fontSize: 13, fontFamily: 'var(--font)', outline: 'none',
+        boxSizing: 'border-box',
+      }}
+    />
+    <div style={{ display: 'flex', gap: 8 }}>
+      <input
+        value={contactInput}
+        onChange={e => setContactInput(e.target.value)}
+        placeholder="+521234567890"
+        style={{
+          flex: 1, background: 'var(--dark3)', border: '1px solid var(--teal)',
+          borderRadius: 10, padding: '8px 12px', color: 'var(--white)',
+          fontSize: 13, fontFamily: 'var(--font)', outline: 'none',
+        }}
+      />
+      <button onClick={saveContact} style={{
+        background: 'var(--teal)', color: 'var(--dark)', border: 'none',
+        borderRadius: 10, padding: '8px 14px', fontWeight: 700, fontSize: 13, cursor: 'pointer',
+      }}>
+        Guardar
+      </button>
+    </div>
+  </>
+) : (
+  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+    <div style={{
+      width: 36, height: 36, borderRadius: '50%', background: '#FFE5EA',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      fontSize: 14, fontWeight: 700, color: 'var(--red)', flexShrink: 0,
+    }}>
+      {contactName ? contactName[0].toUpperCase() : emergencyContact ? emergencyContact[0].toUpperCase() : '?'}
+    </div>
+    <div style={{ flex: 1 }}>
+      <div style={{ fontSize: 9, color: 'var(--g1)' }}>Contacto de emergencia</div>
+      {contactName && (
+        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--dark)' }}>
+          {contactName}
+        </div>
+      )}
+      <div style={{ fontSize: 11, color: contactName ? 'var(--g1)' : 'var(--dark)', fontWeight: contactName ? 400 : 600 }}>
+        {emergencyContact || 'No configurado'}
+      </div>
+    </div>
+    <button onClick={() => setEditingContact(true)} style={{
+      fontSize: 9, background: 'var(--teal-l)', color: 'var(--teal-d)',
+      borderRadius: 6, padding: '4px 10px', fontWeight: 600,
+      border: 'none', cursor: 'pointer',
+    }}>
+      {emergencyContact ? 'Editar' : 'Agregar'}
+    </button>
+  </div>
+)}
       </div>
 
       {/* Historial reciente */}

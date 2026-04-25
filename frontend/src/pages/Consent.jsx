@@ -11,7 +11,7 @@ export default function Consent() {
 
   function handleContinue() {
     setConsent(processing, retraining)
-    navigate('/register')
+    navigate('/profile')
   }
 
   return (
