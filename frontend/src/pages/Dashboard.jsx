@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import useUserStore from '../store/userStore'
 import { getSessions } from '../services/api'
 import { updateContact } from '../services/api'
+import { hasTodayReminder, getTodayEvent, AUTO_REMINDER_DAYS } from '../services/events'
 
 function useRealTime() {
   const [time, setTime] = useState(new Date())
@@ -55,6 +56,9 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [editingContact, setEditingContact] = useState(false)
   const [contactInput, setContactInput] = useState(emergencyContact)
+  const todayReminder = hasTodayReminder()
+  const todayEvent = getTodayEvent()
+  const todayIsAutoDay = AUTO_REMINDER_DAYS.has(new Date().getDay())
 
   useEffect(() => {
     getSessions(5, 0)
@@ -173,6 +177,55 @@ export default function Dashboard() {
           </div>
         ))}
       </div>
+
+      {/* Recordatorios */}
+<div
+  onClick={() => navigate('/schedule')}
+  style={{
+    margin: '0 16px 12px', background: 'var(--white)', borderRadius: 16,
+    padding: '12px 16px', cursor: 'pointer',
+    border: todayReminder ? '1.5px solid rgba(0,201,167,0.35)' : '1.5px solid transparent',
+    transition: 'border-color 0.2s',
+  }}
+>
+  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: todayReminder ? 8 : 0 }}>
+    <div style={{ fontSize: 10, color: 'var(--g1)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1 }}>
+      Recordatorios
+    </div>
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="var(--g1)" strokeWidth="2" strokeLinecap="round">
+      <path d="M4 2l4 4-4 4"/>
+    </svg>
+  </div>
+
+  {todayReminder ? (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+      <div style={{
+        width: 32, height: 32, borderRadius: 10,
+        background: 'rgba(0,201,167,0.1)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+      }}>
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="var(--teal)" strokeWidth="2" strokeLinecap="round">
+          <path d="M8 1v2M8 13v2M1 8h2M13 8h2"/>
+          <circle cx="8" cy="8" r="4"/>
+        </svg>
+      </div>
+      <div>
+        <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--dark)' }}>
+          {todayEvent ? todayEvent.title : 'Hoy es dia de verificacion'}
+        </div>
+        <div style={{ fontSize: 10, color: 'var(--teal)', marginTop: 1 }}>
+          {todayIsAutoDay && !todayEvent
+            ? 'Fin de semana — recordatorio automatico'
+            : 'Recuerda realizar tu captura hoy'}
+        </div>
+      </div>
+    </div>
+  ) : (
+    <div style={{ fontSize: 11, color: 'var(--g1)', marginTop: 2 }}>
+      Sin recordatorios para hoy — toca para ver tu agenda
+    </div>
+  )}
+</div>
 
       {/* Contacto de emergencia */}
       <div style={{ margin: '0 16px 12px', background: 'var(--white)', borderRadius: 16, padding: '12px 16px' }}>

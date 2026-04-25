@@ -9,6 +9,7 @@ import Capture from './pages/Capture'
 import Result from './pages/Result'
 import Alert from './pages/Alert'
 import DeferredConfirm from './pages/DeferredConfirm'
+import Schedule from './pages/Schedule'
 
 export default function App() {
   const { consentProcessing, faceRegistered } = useUserStore()
@@ -40,6 +41,10 @@ export default function App() {
         <Route
           path="/confirm"
           element={onboardingDone ? <DeferredConfirm /> : <Navigate to="/" replace />}
+        />
+        <Route
+          path="/schedule"
+          element={onboardingDone ? <Schedule /> : <Navigate to="/" replace />}
         />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
