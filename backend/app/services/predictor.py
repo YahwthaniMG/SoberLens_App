@@ -501,9 +501,12 @@ class Predictor:
         sober_votes = len(analyzed) - drunk_votes
         drunk_ratio = drunk_votes / len(analyzed)
 
+        CAUTION_LOW = 0.48
+        CAUTION_HIGH = 0.55
+
         if drunk_ratio >= VOTE_THRESHOLD:
             result = "drunk"
-        elif drunk_ratio >= 0.40:
+        elif CAUTION_LOW <= drunk_ratio <= CAUTION_HIGH:
             result = "caution"
         else:
             result = "sober"

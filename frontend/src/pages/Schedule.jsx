@@ -1,9 +1,10 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   loadEvents, addEvent, removeEvent,
-  AUTO_REMINDER_DAYS, toDateString,
+  AUTO_REMINDER_DAYS, toDateString, buildSessionHistory,
 } from '../services/events'
+import { getSessions } from '../services/api'
 
 const DAYS_SHORT = ['Do', 'Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sa']
 const MONTHS = [
@@ -11,65 +12,70 @@ const MONTHS = [
   'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre',
 ]
 
+function resultDayColor(result) {
+  if (result === 'drunk') return '#EF4444'
+  if (result === 'caution') return '#F59E0B'
+  if (result === 'sober') return '#00C9A7'
+  return null
+}
+
 export default function Schedule() {
   const navigate = useNavigate()
   const today = new Date()
 
   const [currentDate, setCurrentDate] = useState(new Date(today.getFullYear(), today.getMonth(), 1))
   const [events, setEvents] = useState(loadEvents)
-  const [selectedDay, setSelectedDay] = useState(null) // Date | null
+  const [selectedDay, setSelectedDay] = useState(null)
   const [newTitle, setNewTitle] = useState('')
   const [showForm, setShowForm] = useState(false)
+  const [sessionHistory, setSessionHistory] = useState({}) // { "YYYY-MM-DD": result }
 
   const year = currentDate.getFullYear()
   const month = currentDate.getMonth()
 
-  // Celdas del calendario: dias del mes anterior + actual + siguiente para completar grid
+  // Cargar historial de sesiones del backend
+  useEffect(() => {
+    getSessions(100, 0)
+      .then(data => {
+        const history = buildSessionHistory(data.sessions || [])
+        setSessionHistory(history)
+      })
+      .catch(() => {})
+  }, [])
+
   const calendarDays = useMemo(() => {
     const firstDay = new Date(year, month, 1).getDay()
     const daysInMonth = new Date(year, month + 1, 0).getDate()
     const daysInPrev = new Date(year, month, 0).getDate()
 
     const cells = []
-
-    // Dias del mes anterior
     for (let i = firstDay - 1; i >= 0; i--) {
       cells.push({ date: new Date(year, month - 1, daysInPrev - i), current: false })
     }
-    // Dias del mes actual
     for (let d = 1; d <= daysInMonth; d++) {
       cells.push({ date: new Date(year, month, d), current: true })
     }
-    // Dias del mes siguiente para completar la ultima fila
     const remaining = 7 - (cells.length % 7)
     if (remaining < 7) {
       for (let d = 1; d <= remaining; d++) {
         cells.push({ date: new Date(year, month + 1, d), current: false })
       }
     }
-
     return cells
   }, [year, month])
 
-  function prevMonth() {
-    setCurrentDate(new Date(year, month - 1, 1))
-    setSelectedDay(null)
-  }
-
-  function nextMonth() {
-    setCurrentDate(new Date(year, month + 1, 1))
-    setSelectedDay(null)
-  }
+  function prevMonth() { setCurrentDate(new Date(year, month - 1, 1)); setSelectedDay(null) }
+  function nextMonth() { setCurrentDate(new Date(year, month + 1, 1)); setSelectedDay(null) }
 
   function getDayMarkers(date) {
     const dateStr = toDateString(date)
     const isAuto = AUTO_REMINDER_DAYS.has(date.getDay())
     const customEvents = events.filter(e => e.date === dateStr)
-    return { isAuto, customEvents }
+    const sessionResult = sessionHistory[dateStr] || null
+    return { isAuto, customEvents, sessionResult }
   }
 
   function handleDayClick(date) {
-    if (!date) return
     setSelectedDay(date)
     setShowForm(false)
     setNewTitle('')
@@ -77,8 +83,7 @@ export default function Schedule() {
 
   function handleAddEvent() {
     if (!newTitle.trim() || !selectedDay) return
-    const dateStr = toDateString(selectedDay)
-    const event = addEvent(newTitle, dateStr)
+    const event = addEvent(newTitle, toDateString(selectedDay))
     setEvents(prev => [...prev, event])
     setNewTitle('')
     setShowForm(false)
@@ -89,29 +94,21 @@ export default function Schedule() {
     setEvents(prev => prev.filter(e => e.id !== id))
   }
 
+  const todayStr = toDateString(today)
+  const isToday = date => toDateString(date) === todayStr
+  const isSelected = date => selectedDay && toDateString(date) === toDateString(selectedDay)
+  const isFuture = date => toDateString(date) > todayStr
+
   const selectedDateStr = selectedDay ? toDateString(selectedDay) : null
   const selectedMarkers = selectedDay ? getDayMarkers(selectedDay) : null
-  const selectedEvents = selectedDay
-    ? events.filter(e => e.date === selectedDateStr)
-    : []
+  const selectedEvents = selectedDay ? events.filter(e => e.date === selectedDateStr) : []
 
-  const isToday = date =>
-    toDateString(date) === toDateString(today)
-
-  const isSelected = date =>
-    selectedDay && toDateString(date) === toDateString(selectedDay)
-
-  const isPast = date =>
-    toDateString(date) < toDateString(today)
-
-  // Proximos eventos para la lista de abajo
   const upcomingEvents = useMemo(() => {
-    const todayStr = toDateString(today)
     return events
       .filter(e => e.date >= todayStr)
       .sort((a, b) => a.date.localeCompare(b.date))
       .slice(0, 5)
-  }, [events])
+  }, [events, todayStr])
 
   function formatSelectedDate(date) {
     return date.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' })
@@ -122,9 +119,19 @@ export default function Schedule() {
     return d.toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })
   }
 
+  // Estadisticas del mes visible
+  const monthStats = useMemo(() => {
+    const prefix = `${year}-${String(month + 1).padStart(2, '0')}`
+    const days = Object.entries(sessionHistory).filter(([d]) => d.startsWith(prefix))
+    return {
+      sober: days.filter(([, r]) => r === 'sober').length,
+      caution: days.filter(([, r]) => r === 'caution').length,
+      drunk: days.filter(([, r]) => r === 'drunk').length,
+    }
+  }, [sessionHistory, year, month])
+
   return (
     <div className="screen" style={{ background: 'var(--dark)', overflowY: 'auto' }}>
-      {/* Header */}
       <div className="status-bar" style={{ color: 'var(--g1)', flexShrink: 0 }}>
         <button
           onClick={() => navigate('/dashboard')}
@@ -149,9 +156,7 @@ export default function Schedule() {
             <div style={{ fontSize: 17, fontWeight: 800, color: 'var(--white)', letterSpacing: -0.3 }}>
               {MONTHS[month]}
             </div>
-            <div style={{ fontSize: 11, color: 'var(--g1)', fontFamily: 'var(--mono)' }}>
-              {year}
-            </div>
+            <div style={{ fontSize: 11, color: 'var(--g1)', fontFamily: 'var(--mono)' }}>{year}</div>
           </div>
           <button onClick={nextMonth} style={navBtnStyle}>
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="var(--teal)" strokeWidth="2" strokeLinecap="round">
@@ -160,21 +165,49 @@ export default function Schedule() {
           </button>
         </div>
 
+        {/* Estadisticas del mes */}
+        {(monthStats.sober + monthStats.caution + monthStats.drunk) > 0 && (
+          <div style={{
+            display: 'flex', gap: 8,
+          }}>
+            {[
+              { label: 'Sobrio', count: monthStats.sober, color: '#00C9A7' },
+              { label: 'Precaucion', count: monthStats.caution, color: '#F59E0B' },
+              { label: 'Ebrio', count: monthStats.drunk, color: '#EF4444' },
+            ].map(({ label, count, color }) => count > 0 && (
+              <div key={label} style={{
+                flex: 1, background: 'var(--dark2)', borderRadius: 12, padding: '8px 10px',
+                border: `1px solid ${color}30`, textAlign: 'center',
+              }}>
+                <div style={{ fontSize: 20, fontWeight: 800, color }}>{count}</div>
+                <div style={{ fontSize: 9, color: 'var(--g1)' }}>dias {label.toLowerCase()}</div>
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* Leyenda */}
-        <div style={{ display: 'flex', gap: 16, paddingBottom: 4 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 10, color: 'var(--g1)' }}>
-            <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--teal)' }} />
-            Automatico (V/S/D)
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 10, color: 'var(--g1)' }}>
-            <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#A78BFA' }} />
-            Evento
-          </div>
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+          {[
+            { color: '#00C9A7', label: 'Sobrio' },
+            { color: '#EF4444', label: 'Ebrio' },
+            { color: '#F59E0B', label: 'Precaucion' },
+            { color: 'var(--teal)', label: 'Recordatorio (V/S/D)', dot: true },
+            { color: '#A78BFA', label: 'Evento', dot: true },
+          ].map(({ color, label, dot }) => (
+            <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 9, color: 'var(--g1)' }}>
+              <div style={{
+                width: dot ? 6 : 10, height: dot ? 6 : 10,
+                borderRadius: dot ? '50%' : 3,
+                background: color,
+              }} />
+              {label}
+            </div>
+          ))}
         </div>
 
-        {/* Grilla de dias */}
+        {/* Grilla */}
         <div style={{ background: 'var(--dark2)', borderRadius: 20, padding: '12px 8px', border: '1px solid var(--dark3)' }}>
-          {/* Cabecera dias semana */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', marginBottom: 4 }}>
             {DAYS_SHORT.map(d => (
               <div key={d} style={{ textAlign: 'center', fontSize: 10, color: 'var(--g1)', fontWeight: 600, padding: '4px 0' }}>
@@ -183,14 +216,14 @@ export default function Schedule() {
             ))}
           </div>
 
-          {/* Dias */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '2px 0' }}>
             {calendarDays.map(({ date, current }, i) => {
-              const { isAuto, customEvents: dayCustom } = getDayMarkers(date)
+              const { isAuto, customEvents: dayCustom, sessionResult } = getDayMarkers(date)
               const hasCustom = dayCustom.length > 0
               const selected = isSelected(date)
               const todayDay = isToday(date)
-              const past = isPast(date) && !todayDay
+              const future = isFuture(date)
+              const dayColor = current && !future && !todayDay ? resultDayColor(sessionResult) : null
 
               return (
                 <button
@@ -198,18 +231,23 @@ export default function Schedule() {
                   onClick={() => current && handleDayClick(date)}
                   style={{
                     background: selected
-                      ? 'var(--teal)'
+                      ? 'rgba(255,255,255,0.15)'
+                      : dayColor
+                      ? `${dayColor}22`
                       : todayDay
-                      ? 'rgba(0,201,167,0.15)'
+                      ? 'rgba(255,255,255,0.08)'
                       : 'transparent',
-                    border: todayDay && !selected ? '1px solid rgba(0,201,167,0.4)' : '1px solid transparent',
+                    border: selected
+                      ? '1.5px solid rgba(255,255,255,0.5)'
+                      : todayDay
+                      ? '1.5px solid rgba(255,255,255,0.3)'
+                      : dayColor
+                      ? `1.5px solid ${dayColor}55`
+                      : '1.5px solid transparent',
                     borderRadius: 10,
                     padding: '6px 2px',
                     cursor: current ? 'pointer' : 'default',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    gap: 3,
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
                     minHeight: 44,
                     transition: 'background 0.15s',
                   }}
@@ -217,30 +255,23 @@ export default function Schedule() {
                   <span style={{
                     fontSize: 13,
                     fontWeight: todayDay || selected ? 800 : 400,
-                    color: selected
-                      ? 'var(--dark)'
+                    color: dayColor && !selected
+                      ? dayColor
                       : !current
                       ? 'var(--dark3)'
-                      : past
+                      : future
                       ? 'var(--g1)'
                       : 'var(--white)',
                   }}>
                     {date.getDate()}
                   </span>
-                  {/* Puntos indicadores */}
-                  {current && (isAuto || hasCustom) && (
+                  {current && (isAuto || hasCustom) && !future && (
                     <div style={{ display: 'flex', gap: 2 }}>
                       {isAuto && (
-                        <div style={{
-                          width: 4, height: 4, borderRadius: '50%',
-                          background: selected ? 'var(--dark)' : 'var(--teal)',
-                        }} />
+                        <div style={{ width: 4, height: 4, borderRadius: '50%', background: 'var(--teal)' }} />
                       )}
                       {hasCustom && (
-                        <div style={{
-                          width: 4, height: 4, borderRadius: '50%',
-                          background: selected ? 'var(--dark)' : '#A78BFA',
-                        }} />
+                        <div style={{ width: 4, height: 4, borderRadius: '50%', background: '#A78BFA' }} />
                       )}
                     </div>
                   )}
@@ -254,14 +285,34 @@ export default function Schedule() {
         {selectedDay && (
           <div style={{
             background: 'var(--dark2)', borderRadius: 16, padding: 16,
-            border: '1px solid var(--dark3)',
-            animation: 'fadeIn 0.2s ease',
+            border: '1px solid var(--dark3)', animation: 'fadeIn 0.2s ease',
           }}>
             <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--white)', marginBottom: 12, textTransform: 'capitalize' }}>
               {formatSelectedDate(selectedDay)}
             </div>
 
-            {/* Recordatorio automatico */}
+            {/* Resultado del dia si existe */}
+            {selectedMarkers.sessionResult && (
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 10,
+                padding: '8px 12px', marginBottom: 8,
+                background: `${resultDayColor(selectedMarkers.sessionResult)}12`,
+                borderRadius: 10,
+                border: `1px solid ${resultDayColor(selectedMarkers.sessionResult)}30`,
+              }}>
+                <div style={{
+                  width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
+                  background: resultDayColor(selectedMarkers.sessionResult),
+                }} />
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: resultDayColor(selectedMarkers.sessionResult) }}>
+                    {selectedMarkers.sessionResult === 'sober' ? 'Sobrio' : selectedMarkers.sessionResult === 'drunk' ? 'Ebrio' : 'Precaucion'}
+                  </div>
+                  <div style={{ fontSize: 10, color: 'var(--g1)' }}>Resultado de verificacion</div>
+                </div>
+              </div>
+            )}
+
             {selectedMarkers.isAuto && (
               <div style={{
                 display: 'flex', alignItems: 'center', gap: 10,
@@ -277,7 +328,6 @@ export default function Schedule() {
               </div>
             )}
 
-            {/* Eventos personalizados del dia */}
             {selectedEvents.map(e => (
               <div key={e.id} style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -291,7 +341,7 @@ export default function Schedule() {
                 </div>
                 <button
                   onClick={() => handleRemove(e.id)}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--g1)', padding: 4, lineHeight: 1 }}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--g1)', padding: 4 }}
                 >
                   <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                     <path d="M2 2l10 10M12 2L2 12"/>
@@ -300,14 +350,12 @@ export default function Schedule() {
               </div>
             ))}
 
-            {/* Sin nada en el dia */}
-            {!selectedMarkers.isAuto && selectedEvents.length === 0 && (
+            {!selectedMarkers.sessionResult && !selectedMarkers.isAuto && selectedEvents.length === 0 && (
               <div style={{ fontSize: 11, color: 'var(--g1)', marginBottom: 8 }}>
-                Sin recordatorios para este dia.
+                {isFuture(selectedDay) ? 'Dia sin eventos programados.' : 'Sin verificacion registrada este dia.'}
               </div>
             )}
 
-            {/* Formulario para agregar evento */}
             {!showForm ? (
               <button
                 onClick={() => setShowForm(true)}
@@ -346,7 +394,6 @@ export default function Schedule() {
                     color: newTitle.trim() ? 'var(--dark)' : 'var(--g1)',
                     border: 'none', borderRadius: 10, padding: '8px 14px',
                     fontWeight: 700, fontSize: 12, cursor: newTitle.trim() ? 'pointer' : 'default',
-                    transition: 'background 0.15s',
                   }}
                 >
                   Guardar

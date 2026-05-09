@@ -11,6 +11,8 @@ import Alert from './pages/Alert'
 import DeferredConfirm from './pages/DeferredConfirm'
 import Schedule from './pages/Schedule'
 import DeviceRecovery from './pages/DeviceRecovery'
+import UserProfile from './pages/UserProfile'
+import Privacy from './pages/Privacy'
 
 export default function App() {
   const { consentProcessing, faceRegistered } = useUserStore()
@@ -21,7 +23,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Onboarding />} />
         <Route path="/consent" element={<Consent />} />
-        <Route path="/profile" element={<Profile />} />
+      <Route path="/profile" element={<Profile />} />
         <Route path="/register" element={<FaceRegistration />} />
         <Route
           path="/dashboard"
@@ -49,6 +51,9 @@ export default function App() {
         />
         <Route path="/recover" element={<DeviceRecovery />} />
         <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="/user-profile" element={onboardingDone ? <UserProfile /> : <Navigate to="/" replace />} />
+        <Route path="/privacy" element={<Privacy />} />
+
       </Routes>
     </div>
   )

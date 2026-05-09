@@ -58,3 +58,19 @@ export function getTodayEvent() {
 export function toDateString(date) {
   return date.toISOString().slice(0, 10)
 }
+
+// Construye un mapa { "YYYY-MM-DD": "drunk"|"sober"|"caution" }
+// con el peor resultado del dia (drunk > caution > sober)
+export function buildSessionHistory(sessions) {
+  const PRIORITY = { drunk: 3, caution: 2, sober: 1 }
+  const history = {}
+
+  for (const s of sessions) {
+    const dateStr = s.created_at.slice(0, 10)  // "YYYY-MM-DD"
+    const current = history[dateStr]
+    if (!current || (PRIORITY[s.result] || 0) > (PRIORITY[current] || 0)) {
+      history[dateStr] = s.result
+    }
+  }
+  return history
+}

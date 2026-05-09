@@ -125,7 +125,19 @@ export default function Dashboard() {
           color: 'var(--dark2)', background: 'var(--g3)',
           padding: '4px 10px', borderRadius: 8,
         }}>
-          {timeStr}
+          <button
+            onClick={() => navigate('/user-profile')}
+            style={{
+              width: 34, height: 34, borderRadius: '50%',
+              background: 'linear-gradient(135deg, var(--teal), var(--teal-d))',
+              border: 'none', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 14, fontWeight: 800, color: 'var(--dark)',
+              flexShrink: 0,
+            }}
+          >
+            {name ? name[0].toUpperCase() : '?'}
+          </button>
         </div>
       </div>
 
