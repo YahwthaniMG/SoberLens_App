@@ -1,82 +1,146 @@
+// frontend/src/store/userStore.js
 import { create } from 'zustand'
 
+const KEYS = {
+  deviceId:    'soberlens_device_id',
+  role:        'soberlens_role',
+  employeeId:  'soberlens_employee_id',
+  workerId:    'soberlens_worker_id',
+  companyId:   'soberlens_company_id',
+  companyName: 'soberlens_company_name',
+  workerName:  'soberlens_worker_name',
+  area:        'soberlens_area',
+  shift:       'soberlens_shift',
+  faceRegistered: 'soberlens_face_registered',
+  consentGiven:   'soberlens_consent_given',
+  adminToken:  'soberlens_admin_token',
+  adminCompanyId:   'soberlens_admin_company_id',
+  adminCompanyName: 'soberlens_admin_company_name',
+  adminAccessCode:  'soberlens_admin_access_code',
+}
+
+function get(key) {
+  return localStorage.getItem(key) || ''
+}
+
+function getBool(key) {
+  return localStorage.getItem(key) === 'true'
+}
+
+function set(key, value) {
+  localStorage.setItem(key, value)
+}
+
 function getOrCreateDeviceId() {
-  let id = localStorage.getItem('soberlens_device_id')
+  let id = localStorage.getItem(KEYS.deviceId)
   if (!id) {
     id = crypto.randomUUID()
-    localStorage.setItem('soberlens_device_id', id)
+    localStorage.setItem(KEYS.deviceId, id)
   }
   return id
 }
 
-function loadConsent(deviceId) {
-  try {
-    const raw = localStorage.getItem(`soberlens_consent_${deviceId}`)
-    return raw ? JSON.parse(raw) : { processing: false, retraining: false }
-  } catch {
-    return { processing: false, retraining: false }
-  }
-}
+const useUserStore = create((setState) => ({
+  // Compartido
+  deviceId: getOrCreateDeviceId(),
+  role: get(KEYS.role), // 'employee' | 'admin' | ''
 
-const deviceId = getOrCreateDeviceId()
-const consent = loadConsent(deviceId)
+  // Empleado
+  employeeId:  get(KEYS.employeeId),
+  workerId:    get(KEYS.workerId),
+  companyId:   get(KEYS.companyId),
+  companyName: get(KEYS.companyName),
+  workerName:  get(KEYS.workerName),
+  area:        get(KEYS.area),
+  shift:       get(KEYS.shift),
+  faceRegistered: getBool(KEYS.faceRegistered),
+  consentGiven:   getBool(KEYS.consentGiven),
 
-const useUserStore = create((set, get) => ({
-  deviceId,
+  // Admin
+  adminToken:       get(KEYS.adminToken),
+  adminCompanyId:   get(KEYS.adminCompanyId),
+  adminCompanyName: get(KEYS.adminCompanyName),
+  adminAccessCode:  get(KEYS.adminAccessCode),
 
-  consentProcessing: consent.processing,
-  consentRetraining: consent.retraining,
+  // ---------------------------------------------------------------------------
+  // Acciones compartidas
+  // ---------------------------------------------------------------------------
 
-  emergencyContact: localStorage.getItem(`soberlens_contact_${deviceId}`) || '',
-  faceRegistered: localStorage.getItem(`soberlens_face_${deviceId}`) === 'true',
-  name: localStorage.getItem(`soberlens_name_${deviceId}`) || '',
-  ageRange: localStorage.getItem(`soberlens_age_${deviceId}`) || '',
-
-  setProfile: (name, ageRange) => {
-    const id = get().deviceId
-    localStorage.setItem(`soberlens_name_${id}`, name)
-    localStorage.setItem(`soberlens_age_${id}`, ageRange)
-    set({ name, ageRange })
+  setRole(role) {
+    set(KEYS.role, role)
+    setState({ role })
   },
 
-  setConsent: (processing, retraining) => {
-    const id = get().deviceId
-    localStorage.setItem(
-      `soberlens_consent_${id}`,
-      JSON.stringify({ processing, retraining })
-    )
-    set({ consentProcessing: processing, consentRetraining: retraining })
+  // ---------------------------------------------------------------------------
+  // Acciones empleado
+  // ---------------------------------------------------------------------------
+
+  setCompany(companyId, companyName) {
+    set(KEYS.companyId, companyId)
+    set(KEYS.companyName, companyName)
+    setState({ companyId: String(companyId), companyName })
   },
 
-  setEmergencyContact: (contact) => {
-    const id = get().deviceId
-    localStorage.setItem(`soberlens_contact_${id}`, contact)
-    set({ emergencyContact: contact })
-  },
-
-  setFaceRegistered: (value) => {
-    const id = get().deviceId
-    localStorage.setItem(`soberlens_face_${id}`, String(value))
-    set({ faceRegistered: value })
-  },
-
-  // Crea un perfil nuevo con un device_id diferente.
-  // Usado cuando otro usuario quiere registrarse en el mismo navegador.
-  switchToNewProfile: () => {
-    const newId = crypto.randomUUID()
-    localStorage.setItem('soberlens_device_id', newId)
-    set({
-      deviceId: newId,
-      consentProcessing: false,
-      consentRetraining: false,
-      emergencyContact: '',
-      faceRegistered: false,
+  setEmployeeProfile(employeeId, workerId, workerName, area, shift) {
+    set(KEYS.employeeId, employeeId)
+    set(KEYS.workerId, workerId)
+    set(KEYS.workerName, workerName)
+    set(KEYS.area, area)
+    set(KEYS.shift, shift)
+    setState({
+      employeeId: String(employeeId),
+      workerId,
+      workerName,
+      area,
+      shift,
     })
   },
 
-  isOnboardingComplete: () => {
-    const s = get()
-    return s.consentProcessing && s.faceRegistered
+  setFaceRegistered(value) {
+    set(KEYS.faceRegistered, value)
+    setState({ faceRegistered: value })
+  },
+
+  setConsentGiven(value) {
+    set(KEYS.consentGiven, value)
+    setState({ consentGiven: value })
+  },
+
+  // ---------------------------------------------------------------------------
+  // Acciones admin
+  // ---------------------------------------------------------------------------
+
+  setAdminSession(token, companyId, companyName, accessCode) {
+    set(KEYS.adminToken, token)
+    set(KEYS.adminCompanyId, companyId)
+    set(KEYS.adminCompanyName, companyName)
+    set(KEYS.adminAccessCode, accessCode)
+    setState({
+      adminToken: token,
+      adminCompanyId: String(companyId),
+      adminCompanyName: companyName,
+      adminAccessCode: accessCode,
+      role: 'admin',
+    })
+    set(KEYS.role, 'admin')
+  },
+
+  // ---------------------------------------------------------------------------
+  // Cerrar sesion (limpia todo)
+  // ---------------------------------------------------------------------------
+
+  logout() {
+    Object.values(KEYS).forEach(k => localStorage.removeItem(k))
+    const newDeviceId = crypto.randomUUID()
+    localStorage.setItem(KEYS.deviceId, newDeviceId)
+    setState({
+      deviceId: newDeviceId,
+      role: '',
+      employeeId: '', workerId: '', companyId: '', companyName: '',
+      workerName: '', area: '', shift: '',
+      faceRegistered: false, consentGiven: false,
+      adminToken: '', adminCompanyId: '', adminCompanyName: '', adminAccessCode: '',
+    })
   },
 }))
 

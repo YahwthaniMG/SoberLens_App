@@ -17,6 +17,8 @@ from app.db.database import create_tables
 from app.routes import analyze, identity, sessions, notify
 from app.services.identity import get_identity_service
 from app.services.predictor import get_predictor
+from app.routes import analyze, identity, sessions, notify, companies
+from app.routes import analyze, identity, sessions, notify, companies, employees
 
 logging.basicConfig(
     level=logging.INFO,
@@ -66,6 +68,8 @@ app.include_router(analyze.router, tags=["analyze"])
 app.include_router(identity.router, tags=["identity"])
 app.include_router(sessions.router, tags=["sessions"])
 app.include_router(notify.router, tags=["notify"])
+app.include_router(companies.router, tags=["companies"])
+app.include_router(employees.router, tags=["employees"])
 
 
 @app.get("/health")

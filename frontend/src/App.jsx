@@ -1,60 +1,111 @@
-import { Routes, Route, Navigate } from 'react-router-dom'
+// frontend/src/App.jsx
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import useUserStore from './store/userStore'
-import Onboarding from './pages/Onboarding'
-import Consent from './pages/Consent'
-import Profile from './pages/Profile'
-import FaceRegistration from './pages/FaceRegistration'
-import Dashboard from './pages/Dashboard'
-import Capture from './pages/Capture'
-import Result from './pages/Result'
-import Alert from './pages/Alert'
-import DeferredConfirm from './pages/DeferredConfirm'
-import Schedule from './pages/Schedule'
-import DeviceRecovery from './pages/DeviceRecovery'
-import UserProfile from './pages/UserProfile'
-import Privacy from './pages/Privacy'
+
+// Pantallas compartidas
+import RoleSelection    from './pages/RoleSelection'
+import Privacy          from './pages/Privacy'
+
+// Flujo empleado
+import EmployeeJoin        from './pages/EmployeeJoin'
+import EmployeeIdVerify    from './pages/EmployeeIdVerify'
+import EmployeeFaceRegister from './pages/EmployeeFaceRegister'
+import Consent             from './pages/Consent'
+import EmployeeDashboard   from './pages/EmployeeDashboard'
+import Capture             from './pages/Capture'
+import Result              from './pages/Result'
+import Schedule            from './pages/Schedule'
+import UserProfile         from './pages/UserProfile'
+
+// Flujo admin
+import CompanyRegister    from './pages/CompanyRegister'
+import AdminLogin         from './pages/AdminLogin'
+import AdminDashboard     from './pages/AdminDashboard'
+import AdminEmployeeDetail from './pages/AdminEmployeeDetail'
+import SecondVerification from './pages/SecondVerification'
+import AdminSettings      from './pages/AdminSettings'
+
+function EmployeeGuard({ children }) {
+  const { role, faceRegistered, consentGiven, employeeId } = useUserStore()
+  if (role !== 'employee') return <Navigate to="/" replace />
+  if (!employeeId || !faceRegistered || !consentGiven) return <Navigate to="/join" replace />
+  return children
+}
+
+function AdminGuard({ children }) {
+  const { role, adminToken } = useUserStore()
+  if (role !== 'admin' || !adminToken) return <Navigate to="/" replace />
+  return children
+}
 
 export default function App() {
-  const { consentProcessing, faceRegistered } = useUserStore()
-  const onboardingDone = consentProcessing && faceRegistered
+  const { role, employeeId, faceRegistered, consentGiven, adminToken } = useUserStore()
+
+  // Determina la ruta de inicio segun el estado del store
+  function getDefaultRoute() {
+    if (role === 'admin' && adminToken) return '/admin/dashboard'
+    if (role === 'employee') {
+      if (!employeeId) return '/join'
+      if (!faceRegistered) return '/register-face'
+      if (!consentGiven)   return '/consent'
+      return '/dashboard'
+    }
+    return '/'
+  }
 
   return (
-    <div className="app-shell">
+    <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Onboarding />} />
-        <Route path="/consent" element={<Consent />} />
-      <Route path="/profile" element={<Profile />} />
-        <Route path="/register" element={<FaceRegistration />} />
-        <Route
-          path="/dashboard"
-          element={onboardingDone ? <Dashboard /> : <Navigate to="/" replace />}
-        />
-        <Route
-          path="/capture"
-          element={onboardingDone ? <Capture /> : <Navigate to="/" replace />}
-        />
-        <Route
-          path="/result"
-          element={onboardingDone ? <Result /> : <Navigate to="/" replace />}
-        />
-        <Route
-          path="/alert"
-          element={onboardingDone ? <Alert /> : <Navigate to="/" replace />}
-        />
-        <Route
-          path="/confirm"
-          element={onboardingDone ? <DeferredConfirm /> : <Navigate to="/" replace />}
-        />
-        <Route
-          path="/schedule"
-          element={onboardingDone ? <Schedule /> : <Navigate to="/" replace />}
-        />
-        <Route path="/recover" element={<DeviceRecovery />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-        <Route path="/user-profile" element={onboardingDone ? <UserProfile /> : <Navigate to="/" replace />} />
+        {/* Entrada */}
+        <Route path="/" element={<RoleSelection />} />
+
+        {/* Flujo empleado — registro */}
+        <Route path="/join"          element={<EmployeeJoin />} />
+        <Route path="/verify-id"     element={<EmployeeIdVerify />} />
+        <Route path="/register-face" element={<EmployeeFaceRegister />} />
+        <Route path="/consent"       element={<Consent />} />
+
+        {/* Flujo empleado — app */}
+        <Route path="/dashboard" element={
+          <EmployeeGuard><EmployeeDashboard /></EmployeeGuard>
+        } />
+        <Route path="/capture" element={
+          <EmployeeGuard><Capture /></EmployeeGuard>
+        } />
+        <Route path="/result" element={
+          <EmployeeGuard><Result /></EmployeeGuard>
+        } />
+        <Route path="/schedule" element={
+          <EmployeeGuard><Schedule /></EmployeeGuard>
+        } />
+        <Route path="/profile" element={
+          <EmployeeGuard><UserProfile /></EmployeeGuard>
+        } />
+
+        {/* Flujo admin — registro y login */}
+        <Route path="/admin/register" element={<CompanyRegister />} />
+        <Route path="/admin/login"    element={<AdminLogin />} />
+
+        {/* Flujo admin — app */}
+        <Route path="/admin/dashboard" element={
+          <AdminGuard><AdminDashboard /></AdminGuard>
+        } />
+        <Route path="/admin/employees/:id" element={
+          <AdminGuard><AdminEmployeeDetail /></AdminGuard>
+        } />
+        <Route path="/admin/sessions/:id/verify" element={
+          <AdminGuard><SecondVerification /></AdminGuard>
+        } />
+        <Route path="/admin/settings" element={
+          <AdminGuard><AdminSettings /></AdminGuard>
+        } />
+
+        {/* Compartidas */}
         <Route path="/privacy" element={<Privacy />} />
 
+        {/* Fallback */}
+        <Route path="*" element={<Navigate to={getDefaultRoute()} replace />} />
       </Routes>
-    </div>
+    </BrowserRouter>
   )
 }

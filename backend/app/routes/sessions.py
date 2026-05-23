@@ -10,6 +10,8 @@ from sqlalchemy.orm import Session as DBSession
 
 from app.db.database import get_db
 from app.db.models import Session as SessionModel, User
+from app.services.auth import get_current_company
+from app.db.models import Company
 
 logger = logging.getLogger(__name__)
 
@@ -136,4 +138,65 @@ def confirm_session(
         "session_id": session_id,
         "user_confirmed": session.user_confirmed,
         "retraining_candidate": session.retraining_candidate,
+    }
+
+
+# ---------------------------------------------------------------------------
+# PATCH /sessions/{session_id}/second-verify
+# ---------------------------------------------------------------------------
+
+
+@router.patch("/{session_id}/second-verify")
+def second_verify(
+    session_id: int,
+    result: str,
+    company: Company = Depends(get_current_company),
+    db: DBSession = Depends(get_db),
+):
+    """
+    El admin confirma o descarta un resultado no apto.
+    result debe ser "confirmed" o "false_positive".
+    Solo el admin de la empresa duena de la sesion puede llamar este endpoint.
+    """
+    if result not in ("confirmed", "false_positive"):
+        raise HTTPException(
+            status_code=400,
+            detail="El valor de result debe ser 'confirmed' o 'false_positive'.",
+        )
+
+    session = (
+        db.query(SessionModel)
+        .filter(
+            SessionModel.id == session_id,
+            SessionModel.company_id == company.id,
+        )
+        .first()
+    )
+    if session is None:
+        raise HTTPException(status_code=404, detail="Sesion no encontrada.")
+
+    if session.second_verification_result is not None:
+        raise HTTPException(
+            status_code=409,
+            detail="Esta sesion ya tiene segunda verificacion registrada.",
+        )
+
+    session.second_verification_result = result
+    session.second_verified_at = datetime.datetime.utcnow()
+    session.access_granted = result == "false_positive"
+    db.commit()
+
+    logger.info(
+        "Segunda verificacion: session_id=%d result=%s access_granted=%s company_id=%d",
+        session_id,
+        result,
+        session.access_granted,
+        company.id,
+    )
+
+    return {
+        "session_id": session.id,
+        "second_verification_result": session.second_verification_result,
+        "access_granted": session.access_granted,
+        "second_verified_at": session.second_verified_at.isoformat(),
     }

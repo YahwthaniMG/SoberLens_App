@@ -8,6 +8,8 @@ el resultado de la sesion con votacion por mayoria.
 Contrato del request:
     Content-Type: multipart/form-data
     Header:  X-Device-ID (UUID del frontend)
+    Header:  X-Employee-ID (opcional, solo flujo B2B)
+    Header:  X-Company-ID  (opcional, solo flujo B2B)
     Campo:   frames  (List[UploadFile], JPEG o PNG)
 
 Contrato del response (200 OK):
@@ -24,8 +26,8 @@ Validacion de identidad durante la sesion:
     IdentityService.identify_user_face() antes de la clasificacion.
 
     Umbrales de rechazo de sesion:
-        NO_FACE_THRESHOLD    = 0.40  (>40% de frames sin cara → error)
-        MISMATCH_THRESHOLD   = 0.30  (>30% de frames con cara incorrecta → error)
+        NO_FACE_THRESHOLD    = 0.40  (>40% de frames sin cara -> error)
+        MISMATCH_THRESHOLD   = 0.30  (>30% de frames con cara incorrecta -> error)
 
     Si no hay embedding registrado, los frames se clasifican sin verificacion
     de identidad (identity_status="unknown").
@@ -33,6 +35,7 @@ Validacion de identidad durante la sesion:
 
 import logging
 import os
+from typing import Optional
 
 import cv2
 import numpy as np
@@ -52,9 +55,7 @@ router = APIRouter()
 MAX_FRAMES = 18
 ALLOWED_CONTENT_TYPES = {"image/jpeg", "image/png", "image/webp"}
 
-# Fraccion maxima de frames sin cara antes de rechazar la sesion
 NO_FACE_THRESHOLD = 0.40
-# Fraccion maxima de frames con cara incorrecta antes de rechazar la sesion
 MISMATCH_THRESHOLD = 0.30
 
 
@@ -79,6 +80,8 @@ def _get_or_create_user(device_id: str, db: DBSession) -> User:
 async def analyze(
     frames: list[UploadFile] = File(..., description="Frames capturados (JPEG/PNG)"),
     x_device_id: str = Header(..., alias="X-Device-ID"),
+    x_employee_id: Optional[int] = Header(None, alias="X-Employee-ID"),
+    x_company_id: Optional[int] = Header(None, alias="X-Company-ID"),
     predictor: Predictor = Depends(get_predictor),
     identity_svc: IdentityService = Depends(get_identity_service),
     db: DBSession = Depends(get_db),
@@ -121,11 +124,19 @@ async def analyze(
         )
 
     # ------------------------------------------------------------------
-    # Cargar embedding de referencia del usuario (puede ser None)
+    # Cargar embedding de referencia
+    # En B2B se busca en Employee, en B2C en User.
     # ------------------------------------------------------------------
     user = _get_or_create_user(x_device_id, db)
     reference_embedding = None
-    if user.face_embedding:
+
+    if x_employee_id is not None:
+        from app.db.models import Employee
+
+        employee = db.query(Employee).filter(Employee.id == x_employee_id).first()
+        if employee and employee.face_embedding:
+            reference_embedding = identity_svc.deserialize(employee.face_embedding)
+    elif user.face_embedding:
         reference_embedding = identity_svc.deserialize(user.face_embedding)
 
     identity_threshold = float(os.getenv("EMBEDDING_SIMILARITY_THRESHOLD", 0.75))
@@ -133,12 +144,10 @@ async def analyze(
     # ------------------------------------------------------------------
     # Validacion de identidad por frame
     # ------------------------------------------------------------------
-    # Estructura por frame: {"status": str, "similarity": float|None, "frame_index": int}
     frame_identity = []
 
     for frame in bgr_frames:
         if reference_embedding is None:
-            # Usuario sin embedding registrado — no se verifica identidad
             frame_identity.append({"status": "unknown", "similarity": None})
         else:
             result = identity_svc.identify_user_face(
@@ -199,7 +208,7 @@ async def analyze(
             )
 
     # ------------------------------------------------------------------
-    # Clasificacion: solo frames con cara verificada (o unknown si no hay embedding)
+    # Clasificacion: solo frames con cara verificada (o unknown)
     # ------------------------------------------------------------------
     valid_statuses = {"verified", "unknown"}
     frames_to_classify = [
@@ -234,7 +243,9 @@ async def analyze(
     # Persistencia — guardar sesion en DB
     # ------------------------------------------------------------------
     db_session = SessionModel(
-        user_id=user.id,
+        user_id=user.id if x_employee_id is None else None,
+        employee_id=x_employee_id,
+        company_id=x_company_id,
         result=session_result["result"],
         drunk_ratio=session_result["drunk_ratio"],
         total_frames=total,
@@ -247,21 +258,17 @@ async def analyze(
     db.refresh(db_session)
 
     logger.info(
-        "Sesion guardada: id=%d user_id=%d result=%s drunk_ratio=%.2f",
+        "Sesion guardada: id=%d employee_id=%s user_id=%s result=%s drunk_ratio=%.2f",
         db_session.id,
-        user.id,
+        x_employee_id,
+        user.id if x_employee_id is None else None,
         db_session.result,
         db_session.drunk_ratio,
     )
 
     # ------------------------------------------------------------------
-    # Ensamblar frame_results con identity_status incluido
+    # Ensamblar frame_results
     # ------------------------------------------------------------------
-    # frame_identity tiene una entrada por cada frame decodificado.
-    # session_result["frame_results"] tiene una entrada por cada frame clasificado.
-    # Hay que combinarlos: los frames no clasificados (wrong_person / no_face)
-    # se incluyen en la respuesta con face_detected=False y sin clasificacion.
-
     classify_iter = iter(session_result["frame_results"])
     frame_results = []
 
@@ -278,7 +285,6 @@ async def analyze(
                 )
             )
         else:
-            # Frame descartado por falta de cara o persona incorrecta
             frame_results.append(
                 FrameResult(
                     face_detected=(fi["status"] == "wrong_person"),
@@ -289,7 +295,6 @@ async def analyze(
                 )
             )
 
-    # Resumen de identidad para la respuesta
     no_face_count_resp = sum(1 for fi in frame_identity if fi["status"] == "no_face")
     wrong_person_count_resp = sum(
         1 for fi in frame_identity if fi["status"] == "wrong_person"
