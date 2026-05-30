@@ -201,7 +201,8 @@ def upload_employees(
     reader = csv.DictReader(io.StringIO(content))
 
     required_columns = {"worker_id", "name", "area", "shift"}
-    if not required_columns.issubset(set(reader.fieldnames or [])):
+    fieldnames_clean = [f.strip() for f in (reader.fieldnames or [])]
+    if not required_columns.issubset(set(fieldnames_clean)):
         raise HTTPException(
             status_code=422,
             detail=f"El CSV debe tener las columnas: {', '.join(required_columns)}",
@@ -212,6 +213,7 @@ def upload_employees(
     errors = []
 
     for i, row in enumerate(reader, start=2):
+        row = {k.strip(): v.strip() for k, v in row.items() if k}
         worker_id = row.get("worker_id", "").strip()
         name = row.get("name", "").strip()
         if not worker_id or not name:

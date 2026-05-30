@@ -1,3 +1,4 @@
+// frontend/src/pages/Capture.jsx
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { startCamera, stopCamera, captureFrames, capturePhoto } from '../services/camera'
@@ -6,35 +7,33 @@ import { verifyFace, analyzeFrames } from '../services/api'
 const TOTAL_DURATION = 5000
 const FRAME_COUNT = 18
 
-// Estados del flujo
 const STATE = {
-  INIT: 'init',           // iniciando camara
-  VERIFYING: 'verifying', // verificando identidad
-  READY: 'ready',         // listo para grabar
-  RECORDING: 'recording', // grabando 5 segundos
-  ANALYZING: 'analyzing', // enviando al backend
-  ERROR: 'error',
+  INIT:      'init',
+  VERIFYING: 'verifying',
+  READY:     'ready',
+  RECORDING: 'recording',
+  ANALYZING: 'analyzing',
+  ERROR:     'error',
 }
 
 export default function Capture() {
-  const navigate = useNavigate()
-  const videoRef = useRef(null)
+  const navigate  = useNavigate()
+  const videoRef  = useRef(null)
   const streamRef = useRef(null)
-  const timerRef = useRef(null)
+  const timerRef  = useRef(null)
 
-  const [state, setState] = useState(STATE.INIT)
-  const [progress, setProgress] = useState(0)
-  const [errorMsg, setErrorMsg] = useState('')
-  const [identityResult, setIdentityResult] = useState(null) // { verified, similarity }
+  const [state, setState]               = useState(STATE.INIT)
+  const [progress, setProgress]         = useState(0)
+  const [errorMsg, setErrorMsg]         = useState('')
+  const [identityResult, setIdentityResult] = useState(null)
 
   useEffect(() => {
     async function init() {
       try {
         streamRef.current = await startCamera(videoRef.current)
-        // Dar 1 segundo para que la camara se estabilice antes de verificar
         setTimeout(() => verifyIdentity(), 1000)
       } catch {
-        setErrorMsg('No se pudo acceder a la cámara. Verifica los permisos.')
+        setErrorMsg('No se pudo acceder a la camara. Verifica los permisos.')
         setState(STATE.ERROR)
       }
     }
@@ -48,7 +47,7 @@ export default function Capture() {
   async function verifyIdentity() {
     setState(STATE.VERIFYING)
     try {
-      const photo = await capturePhoto(videoRef.current)
+      const photo  = await capturePhoto(videoRef.current)
       const result = await verifyFace(photo)
       setIdentityResult(result)
 
@@ -57,7 +56,7 @@ export default function Capture() {
       } else {
         setErrorMsg(
           `Identidad no verificada (similitud: ${(result.similarity * 100).toFixed(0)}%). ` +
-          'Asegúrate de que eres tú y que hay buena iluminación.'
+          'Asegurate de que eres tu y que hay buena iluminacion.'
         )
         setState(STATE.ERROR)
       }
@@ -71,7 +70,6 @@ export default function Capture() {
     setState(STATE.RECORDING)
     setProgress(0)
 
-    // Barra de progreso en tiempo real
     const startTime = Date.now()
     timerRef.current = setInterval(() => {
       const elapsed = Date.now() - startTime
@@ -95,11 +93,7 @@ export default function Capture() {
     try {
       const result = await analyzeFrames(frames)
       stopCamera(streamRef.current)
-      if (result.result === 'drunk' || result.result === 'caution') {
-        navigate('/alert', { state: { result } })
-      } else {
-        navigate('/result', { state: { result } })
-      }
+      navigate('/result', { state: { result } })
     } catch (err) {
       setErrorMsg(err.message || 'Error al analizar los frames. Intenta de nuevo.')
       setState(STATE.ERROR)
@@ -116,30 +110,33 @@ export default function Capture() {
     })
   }
 
-  // Mensajes de estado
   const statusMessages = {
-    [STATE.INIT]: 'Iniciando cámara...',
+    [STATE.INIT]:      'Iniciando camara...',
     [STATE.VERIFYING]: 'Verificando identidad...',
-    [STATE.READY]: 'Listo. Presiona para iniciar',
+    [STATE.READY]:     'Listo. Presiona para iniciar',
     [STATE.RECORDING]: 'Grabando...',
     [STATE.ANALYZING]: 'Analizando con IA...',
-    [STATE.ERROR]: 'Error',
+    [STATE.ERROR]:     'Error',
   }
 
   const isLoading = [STATE.INIT, STATE.VERIFYING, STATE.ANALYZING].includes(state)
 
   return (
     <div className="screen" style={{ background: 'var(--dark)', position: 'relative' }}>
-      {/* Status bar */}
-      <div className="status-bar" style={{ color: 'rgba(255,255,255,.5)', position: 'relative', zIndex: 10 }}>
+      {/* Header */}
+      <div className="status-bar" style={{ color: 'rgba(255,255,255,.5)',
+        position: 'relative', zIndex: 10 }}>
         <button
           onClick={() => navigate('/dashboard')}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,.6)', fontSize: 13 }}
+          style={{ background: 'none', border: 'none', cursor: 'pointer',
+            color: 'rgba(255,255,255,.6)', fontSize: 13 }}
           disabled={state === STATE.RECORDING || state === STATE.ANALYZING}
         >
-          ← Cancelar
+          Cancelar
         </button>
-        <span style={{ fontSize: 11, color: 'rgba(255,255,255,.5)' }}>Verificación</span>
+        <span style={{ fontSize: 11, color: 'rgba(255,255,255,.5)' }}>
+          Verificacion de inicio de turno
+        </span>
         <div style={{ width: 60 }} />
       </div>
 
@@ -151,7 +148,6 @@ export default function Capture() {
           style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
         />
 
-        {/* Overlay */}
         <div style={{
           position: 'absolute', inset: 0,
           background: 'linear-gradient(180deg, rgba(0,0,0,.5) 0%, rgba(0,0,0,.7) 100%)',
@@ -181,7 +177,6 @@ export default function Capture() {
           )}
         </div>
 
-        {/* Estado en overlay */}
         <div style={{
           position: 'absolute', bottom: 24, left: 0, right: 0,
           textAlign: 'center', zIndex: 5,
@@ -197,7 +192,7 @@ export default function Capture() {
         </div>
       </div>
 
-      {/* Barra de progreso (solo durante grabacion) */}
+      {/* Barra de progreso */}
       {state === STATE.RECORDING && (
         <div style={{ height: 4, background: 'var(--dark3)' }}>
           <div style={{
@@ -238,7 +233,7 @@ export default function Capture() {
               </div>
             )}
             <button className="btn-primary" onClick={startRecording}>
-              Iniciar grabación (5 seg)
+              Iniciar verificacion (5 seg)
             </button>
           </>
         ) : (
@@ -248,7 +243,7 @@ export default function Capture() {
         )}
 
         <div style={{ marginTop: 10, fontSize: 10, color: 'var(--g1)', textAlign: 'center' }}>
-          Se capturarán {FRAME_COUNT} frames en {TOTAL_DURATION / 1000} segundos
+          Se capturaran {FRAME_COUNT} frames en {TOTAL_DURATION / 1000} segundos
         </div>
       </div>
 

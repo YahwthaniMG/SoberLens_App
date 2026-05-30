@@ -4,6 +4,7 @@ backend/app/routes/sessions.py
 
 import datetime
 import logging
+from app.db.models import Session as SessionModel, User, Employee
 
 from fastapi import APIRouter, Depends, Header, HTTPException
 from sqlalchemy.orm import Session as DBSession
@@ -20,11 +21,20 @@ router = APIRouter(prefix="/sessions")
 CONFIRM_DELAY_HOURS = 24
 
 
-def _get_user(device_id: str, db: DBSession) -> User:
+def _get_user_or_employee(device_id: str, db: DBSession):
+    """
+    Retorna (user_id, employee_id) segun quien este registrado con ese device_id.
+    Primero busca en employees (B2B), luego en users (B2C).
+    """
+    employee = db.query(Employee).filter(Employee.device_id == device_id).first()
+    if employee:
+        return None, employee.id
+
     user = db.query(User).filter(User.device_id == device_id).first()
-    if user is None:
-        raise HTTPException(status_code=404, detail="Usuario no encontrado.")
-    return user
+    if user:
+        return user.id, None
+
+    raise HTTPException(status_code=404, detail="Usuario no encontrado.")
 
 
 def _session_dict(s: SessionModel) -> dict:
@@ -47,34 +57,6 @@ def _session_dict(s: SessionModel) -> dict:
     }
 
 
-@router.get("")
-def get_sessions(
-    x_device_id: str = Header(..., alias="X-Device-ID"),
-    limit: int = 20,
-    offset: int = 0,
-    db: DBSession = Depends(get_db),
-):
-    user = _get_user(x_device_id, db)
-
-    sessions = (
-        db.query(SessionModel)
-        .filter(SessionModel.user_id == user.id)
-        .order_by(SessionModel.created_at.desc())
-        .limit(limit)
-        .offset(offset)
-        .all()
-    )
-
-    total = db.query(SessionModel).filter(SessionModel.user_id == user.id).count()
-
-    return {
-        "total": total,
-        "limit": limit,
-        "offset": offset,
-        "sessions": [_session_dict(s) for s in sessions],
-    }
-
-
 @router.patch("/{session_id}/confirm")
 def confirm_session(
     session_id: int,
@@ -82,13 +64,15 @@ def confirm_session(
     x_device_id: str = Header(..., alias="X-Device-ID"),
     db: DBSession = Depends(get_db),
 ):
-    user = _get_user(x_device_id, db)
+    user_id, employee_id = _get_user_or_employee(x_device_id, db)
 
-    session = (
-        db.query(SessionModel)
-        .filter(SessionModel.id == session_id, SessionModel.user_id == user.id)
-        .first()
-    )
+    query = db.query(SessionModel).filter(SessionModel.id == session_id)
+    if employee_id:
+        query = query.filter(SessionModel.employee_id == employee_id)
+    else:
+        query = query.filter(SessionModel.user_id == user_id)
+
+    session = query.first()
     if session is None:
         raise HTTPException(status_code=404, detail="Sesion no encontrada.")
 
@@ -96,49 +80,17 @@ def confirm_session(
         raise HTTPException(status_code=409, detail="Esta sesion ya fue confirmada.")
 
     now = datetime.datetime.utcnow()
-    elapsed = now - session.created_at
-    min_elapsed = datetime.timedelta(hours=CONFIRM_DELAY_HOURS)
-
-    if elapsed < min_elapsed:
-        remaining = min_elapsed - elapsed
-        remaining_hours = int(remaining.total_seconds() // 3600)
-        remaining_minutes = int((remaining.total_seconds() % 3600) // 60)
-        raise HTTPException(
-            status_code=425,
-            detail={
-                "error": "confirmation_too_early",
-                "message": (
-                    f"La confirmacion estara disponible en "
-                    f"{remaining_hours}h {remaining_minutes}min. "
-                    "Queremos que hayas descansado antes de responder."
-                ),
-                "available_at": (session.created_at + min_elapsed).isoformat(),
-                "remaining_seconds": int(remaining.total_seconds()),
-            },
-        )
+    confirmable_at = session.created_at + datetime.timedelta(hours=CONFIRM_DELAY_HOURS)
+    if now < confirmable_at:
+        raise HTTPException(status_code=425, detail="Aun no han pasado 24 horas.")
 
     session.user_confirmed = correct
     session.confirmed_at = now
-
-    RETRAINING_RATIO_THRESHOLD = 0.80
-    session.retraining_candidate = (
-        correct and session.drunk_ratio >= RETRAINING_RATIO_THRESHOLD
-    )
-
+    if correct and session.drunk_ratio >= 0.80:
+        session.retraining_candidate = True
     db.commit()
 
-    logger.info(
-        "Sesion %d confirmada: correct=%s retraining_candidate=%s",
-        session_id,
-        correct,
-        session.retraining_candidate,
-    )
-
-    return {
-        "session_id": session_id,
-        "user_confirmed": session.user_confirmed,
-        "retraining_candidate": session.retraining_candidate,
-    }
+    return {"confirmed": True, "session_id": session.id}
 
 
 # ---------------------------------------------------------------------------

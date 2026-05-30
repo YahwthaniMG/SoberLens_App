@@ -257,6 +257,11 @@ async def analyze(
     db.commit()
     db.refresh(db_session)
 
+    if session_result["result"] in ("drunk", "caution") and x_employee_id is not None:
+        from app.routes.notify import notify_company_contacts
+
+        notify_company_contacts(db_session, db)
+
     logger.info(
         "Sesion guardada: id=%d employee_id=%s user_id=%s result=%s drunk_ratio=%.2f",
         db_session.id,
