@@ -73,5 +73,5 @@ app.include_router(employees.router, tags=["employees"])
 
 
 @app.get("/health")
-async def health():
+def health():
     return {"status": "ok"}
