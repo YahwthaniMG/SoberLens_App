@@ -7,7 +7,7 @@ pydantic
 mediapipe
 opencv-python-headless
 numpy
-scikit-learn
+scikit-learn==1.8.0
 
 # Base de datos
 sqlalchemy
