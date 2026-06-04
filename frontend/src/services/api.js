@@ -212,3 +212,13 @@ export async function verifyFace(imageBlob) {
   })
   return handleResponse(res)
 }
+
+export async function getCompanyEmployees(area = '', shift = '') {
+  const params = new URLSearchParams()
+  if (area)  params.append('area', area)
+  if (shift) params.append('shift', shift)
+  const res = await fetch(`${BASE_URL}/companies/employees?${params}`, {
+    headers: adminHeaders(),
+  })
+  return handleResponse(res)
+}

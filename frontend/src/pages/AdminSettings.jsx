@@ -107,10 +107,12 @@ export default function AdminSettings() {
         }}>
           <div style={{ fontSize: 11, color: 'var(--g1)', fontWeight: 600,
             textTransform: 'uppercase', letterSpacing: 1 }}>
-            Contactos de alerta SMS
+            Contactos para verificacion presencial
           </div>
-          <div style={{ fontSize: 12, color: 'var(--g1)' }}>
-            Hasta 3 numeros que recibiran notificacion cuando se detecte un resultado no apto.
+          <div style={{ fontSize: 12, color: 'var(--g1)', lineHeight: 1.6 }}>
+            Cuando el sistema detecte una posible anomalia, se notificara a estos
+            numeros para que el supervisor realice la verificacion presencial con
+            alcoholimetro. La app no reemplaza esa prueba.
           </div>
 
           {loading ? (

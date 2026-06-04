@@ -15,7 +15,8 @@ import EmployeeDashboard    from './pages/EmployeeDashboard'
 import Capture              from './pages/Capture'
 import Result               from './pages/Result'
 import Schedule             from './pages/Schedule'
-import UserProfile          from './pages/UserProfile'
+import UserProfile from './pages/UserProfile'
+import AdminEmployeeList from './pages/AdminEmployeeList'
 
 // Flujo admin
 import CompanyRegister     from './pages/CompanyRegister'
@@ -96,6 +97,9 @@ export default function App() {
       } />
       <Route path="/admin/settings" element={
         <AdminGuard><AdminSettings /></AdminGuard>
+      } />
+      <Route path="/admin/employees" element={
+        <AdminGuard><AdminEmployeeList /></AdminGuard>
       } />
 
       {/* Compartidas */}

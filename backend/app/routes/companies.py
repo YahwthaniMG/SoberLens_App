@@ -402,3 +402,38 @@ def get_employee_history(
         "offset": offset,
         "sessions": [_session_dict(s) for s in sessions],
     }
+
+
+@router.get("/employees")
+def get_employees(
+    area: str | None = None,
+    shift: str | None = None,
+    status: str | None = None,
+    company: Company = Depends(get_current_company),
+    db: Session = Depends(get_db),
+):
+    query = db.query(Employee).filter(Employee.company_id == company.id)
+    if area:
+        query = query.filter(Employee.area == area)
+    if shift:
+        query = query.filter(Employee.shift == shift)
+    if status:
+        query = query.filter(Employee.status == status)
+
+    employees = query.order_by(Employee.name).all()
+
+    return {
+        "total": len(employees),
+        "employees": [
+            {
+                "id": e.id,
+                "worker_id": e.worker_id,
+                "name": e.name,
+                "area": e.area,
+                "shift": e.shift,
+                "status": e.status,
+                "registered": e.face_embedding is not None,
+            }
+            for e in employees
+        ],
+    }

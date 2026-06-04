@@ -218,7 +218,7 @@ export default function AdminDashboard() {
             {/* Accesos rapidos */}
             <div style={{ display: 'flex', gap: 10 }}>
               <button
-                onClick={() => navigate('/admin/settings')}
+                onClick={() => navigate('/admin/employees')}
                 style={{
                   flex: 1, background: 'var(--white)', border: 'none',
                   borderRadius: 16, padding: '16px 12px',
@@ -240,10 +240,10 @@ export default function AdminDashboard() {
               <button
                 onClick={() => navigate('/admin/settings')}
                 style={{
-                  flex: 1, background: 'var(--white)', border: 'none',
-                  borderRadius: 16, padding: '16px 12px',
-                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
-                  cursor: 'pointer',
+                  background: 'var(--white)', border: 'none',
+                  borderRadius: 16, padding: '16px 20px',
+                  display: 'flex', alignItems: 'center', gap: 12,
+                  cursor: 'pointer', width: '100%',
                 }}
               >
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
@@ -251,9 +251,13 @@ export default function AdminDashboard() {
                   <circle cx="12" cy="12" r="3"/>
                   <path d="M12 2v2M12 20v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M2 12h2M20 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
                 </svg>
-                <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--dark)' }}>
+                <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--dark)' }}>
                   Configuracion
                 </div>
+                <svg style={{ marginLeft: 'auto' }} width="14" height="14" viewBox="0 0 14 14"
+                  fill="none" stroke="var(--g1)" strokeWidth="2" strokeLinecap="round">
+                  <path d="M5 3l4 4-4 4"/>
+                </svg>
               </button>
             </div>
           </>
