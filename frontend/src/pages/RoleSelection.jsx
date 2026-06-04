@@ -3,16 +3,35 @@ import { useNavigate } from 'react-router-dom'
 import useUserStore from '../store/userStore'
 
 export default function RoleSelection() {
-  const navigate  = useNavigate()
-  const { setRole } = useUserStore()
+  const navigate = useNavigate()
+  const { setRole, employeeId, faceRegistered, consentGiven,
+          adminToken, role } = useUserStore()
 
   function handleEmployee() {
     setRole('employee')
+    // Si ya tiene sesion completa, ir directo al dashboard
+    if (employeeId && faceRegistered && consentGiven) {
+      navigate('/dashboard')
+      return
+    }
+    // Si tiene employeeId pero le falta algo del registro
+    if (employeeId && !faceRegistered) {
+      navigate('/register-face')
+      return
+    }
+    if (employeeId && !consentGiven) {
+      navigate('/consent')
+      return
+    }
     navigate('/join')
   }
 
   function handleAdmin() {
     setRole('admin')
+    if (adminToken) {
+      navigate('/admin/dashboard')
+      return
+    }
     navigate('/admin/login')
   }
 
@@ -54,12 +73,11 @@ export default function RoleSelection() {
             Selecciona tu rol
           </div>
 
-          {/* Empleado */}
           <button
             onClick={handleEmployee}
             style={{
               background: 'var(--dark2)', border: '1px solid var(--dark3)',
-              borderRadius: 16, padding: '20px 20px',
+              borderRadius: 16, padding: '20px',
               display: 'flex', alignItems: 'center', gap: 16,
               cursor: 'pointer', textAlign: 'left', width: '100%',
             }}
@@ -81,7 +99,9 @@ export default function RoleSelection() {
                 Soy empleado
               </div>
               <div style={{ fontSize: 12, color: 'var(--g1)', lineHeight: 1.4 }}>
-                Accedo con el codigo de mi empresa
+                {employeeId && faceRegistered && consentGiven
+                  ? 'Continuar con mi sesion activa'
+                  : 'Accedo con el codigo de mi empresa'}
               </div>
             </div>
             <svg style={{ marginLeft: 'auto', flexShrink: 0 }}
@@ -91,12 +111,11 @@ export default function RoleSelection() {
             </svg>
           </button>
 
-          {/* Admin */}
           <button
             onClick={handleAdmin}
             style={{
               background: 'var(--dark2)', border: '1px solid var(--dark3)',
-              borderRadius: 16, padding: '20px 20px',
+              borderRadius: 16, padding: '20px',
               display: 'flex', alignItems: 'center', gap: 16,
               cursor: 'pointer', textAlign: 'left', width: '100%',
             }}
@@ -120,7 +139,9 @@ export default function RoleSelection() {
                 Soy administrador
               </div>
               <div style={{ fontSize: 12, color: 'var(--g1)', lineHeight: 1.4 }}>
-                Gestiono el equipo de mi empresa
+                {adminToken
+                  ? 'Continuar con mi sesion activa'
+                  : 'Gestiono el equipo de mi empresa'}
               </div>
             </div>
             <svg style={{ marginLeft: 'auto', flexShrink: 0 }}
@@ -131,7 +152,6 @@ export default function RoleSelection() {
           </button>
         </div>
 
-        {/* Footer */}
         <div style={{ textAlign: 'center', fontSize: 11, color: 'var(--g1)' }}>
           <span
             onClick={() => navigate('/privacy')}

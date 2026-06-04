@@ -130,11 +130,12 @@ const useUserStore = create((setState) => ({
   // ---------------------------------------------------------------------------
 
   logout() {
-    Object.values(KEYS).forEach(k => localStorage.removeItem(k))
-    const newDeviceId = crypto.randomUUID()
-    localStorage.setItem(KEYS.deviceId, newDeviceId)
+    // Conservar el deviceId — es del dispositivo, no del usuario
+    const currentDeviceId = localStorage.getItem(KEYS.deviceId)
+    Object.values(KEYS).forEach(k => {
+      if (k !== KEYS.deviceId) localStorage.removeItem(k)
+    })
     setState({
-      deviceId: newDeviceId,
       role: '',
       employeeId: '', workerId: '', companyId: '', companyName: '',
       workerName: '', area: '', shift: '',
