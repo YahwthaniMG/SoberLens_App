@@ -157,7 +157,7 @@ export default function Capture() {
         <div style={{
           position: 'absolute', top: '50%', left: '50%',
           transform: 'translate(-50%, -60%)',
-          width: 150, height: 190, borderRadius: '50%',
+          width: '72vw', height: '58vh',
           border: `2.5px solid ${
             state === STATE.ERROR ? 'var(--red)' :
             state === STATE.READY ? 'var(--teal)' :

@@ -45,9 +45,9 @@ export default function App() {
   function getDefaultRoute() {
     if (role === 'admin' && adminToken) return '/admin/dashboard'
     if (role === 'employee') {
-      if (!employeeId)      return '/join'
-      if (!faceRegistered)  return '/register-face'
-      if (!consentGiven)    return '/consent'
+      if (!employeeId)     return '/join'
+      if (!consentGiven)   return '/consent'
+      if (!faceRegistered) return '/register-face'
       return '/dashboard'
     }
     return '/'

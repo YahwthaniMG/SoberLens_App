@@ -53,7 +53,7 @@ export default function EmployeeFaceRegister() {
       await registerEmployeeFace(photos[0])
       setFaceRegistered(true)
       stopCamera(streamRef.current)
-      navigate('/consent')
+      navigate('/dashboard')
     } catch (err) {
       setError(err.message || 'No se pudo registrar el rostro. Intenta de nuevo.')
       setStatus('idle')
@@ -94,7 +94,7 @@ export default function EmployeeFaceRegister() {
         <div style={{
           position: 'absolute', top: '50%', left: '50%',
           transform: 'translate(-50%, -60%)',
-          width: 150, height: 190, borderRadius: '50%',
+          width: '72vw', height: '58vh',
           border: '2.5px solid var(--teal)',
           boxShadow: '0 0 0 2000px rgba(0,0,0,0.45)',
         }} />

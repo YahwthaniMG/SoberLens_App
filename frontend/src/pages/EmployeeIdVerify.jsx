@@ -35,7 +35,7 @@ export default function EmployeeIdVerify() {
       preview.area || '',
       preview.shift || '',
     )
-    navigate('/register-face')
+    navigate('/consent')
   }
 
   return (

@@ -11,7 +11,7 @@ export default function Consent() {
 
   function handleContinue() {
     setConsentGiven(true)
-    navigate('/dashboard')
+    navigate('/register-face')
   }
 
   return (

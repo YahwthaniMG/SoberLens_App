@@ -207,7 +207,7 @@ export async function verifyFace(imageBlob) {
   form.append('frame', imageBlob, 'face.jpg')
   const res = await fetch(`${BASE_URL}/identity/verify`, {
     method: 'POST',
-    headers: baseHeaders(),
+    headers: employeeHeaders(),
     body: form,
   })
   return handleResponse(res)

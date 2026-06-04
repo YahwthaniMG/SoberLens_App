@@ -30,7 +30,9 @@ export default function AdminDashboard() {
   })
 
   return (
-    <div className="screen" style={{ background: 'var(--g3)', overflowY: 'auto' }}>
+    <div className="screen" style={{
+      background: 'var(--g3)', overflowY: 'auto', paddingBottom: 100,
+    }}>
 
       {/* Header */}
       <div style={{
@@ -49,40 +51,24 @@ export default function AdminDashboard() {
             </div>
           )}
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button
-            onClick={() => navigate('/admin/settings')}
-            style={{
-              width: 36, height: 36, borderRadius: '50%',
-              background: 'var(--g3)', border: 'none', cursor: 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
-              stroke="var(--g1)" strokeWidth="2" strokeLinecap="round">
-              <circle cx="12" cy="12" r="3"/>
-              <path d="M12 2v2M12 20v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M2 12h2M20 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
-            </svg>
-          </button>
-          <button
-            onClick={handleLogout}
-            style={{
-              width: 36, height: 36, borderRadius: '50%',
-              background: 'var(--g3)', border: 'none', cursor: 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
-              stroke="var(--g1)" strokeWidth="2" strokeLinecap="round">
-              <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
-              <polyline points="16 17 21 12 16 7"/>
-              <line x1="21" y1="12" x2="9" y2="12"/>
-            </svg>
-          </button>
-        </div>
+        <button
+          onClick={handleLogout}
+          style={{
+            width: 36, height: 36, borderRadius: '50%',
+            background: 'var(--g3)', border: 'none', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+            stroke="var(--g1)" strokeWidth="2" strokeLinecap="round">
+            <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
+            <polyline points="16 17 21 12 16 7"/>
+            <line x1="21" y1="12" x2="9" y2="12"/>
+          </svg>
+        </button>
       </div>
 
-      <div style={{ padding: '16px 16px 40px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <div style={{ padding: '16px 16px 0', display: 'flex', flexDirection: 'column', gap: 14 }}>
 
         {loading && (
           <div style={{ textAlign: 'center', padding: 40, color: 'var(--g1)', fontSize: 13 }}>
@@ -93,8 +79,7 @@ export default function AdminDashboard() {
         {error && (
           <div style={{
             background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)',
-            borderRadius: 14, padding: '14px 16px',
-            fontSize: 13, color: '#ef4444',
+            borderRadius: 14, padding: '14px 16px', fontSize: 13, color: '#ef4444',
           }}>
             {error}
           </div>
@@ -102,13 +87,13 @@ export default function AdminDashboard() {
 
         {data && (
           <>
-            {/* Stats del turno */}
+            {/* Stats */}
             <div style={{ display: 'flex', gap: 10 }}>
               {[
-                { label: 'Activos',     value: data.total_active,       color: 'var(--dark)' },
-                { label: 'Verificados', value: data.verified_today,     color: 'var(--teal)' },
+                { label: 'Activos',     value: data.total_active,         color: 'var(--dark)' },
+                { label: 'Verificados', value: data.verified_today,       color: 'var(--teal)' },
                 { label: 'Pendientes',  value: data.pending_verification, color: 'var(--amber)' },
-                { label: 'Alertas',     value: data.alerts.length,      color: 'var(--red)' },
+                { label: 'Alertas',     value: data.alerts.length,        color: 'var(--red)' },
               ].map(stat => (
                 <div key={stat.label} style={{
                   flex: 1, background: 'var(--white)', borderRadius: 16,
@@ -124,19 +109,16 @@ export default function AdminDashboard() {
               ))}
             </div>
 
-            {/* Alertas pendientes */}
+            {/* Alertas */}
             {data.alerts.length > 0 && (
               <div style={{
                 background: 'var(--white)', borderRadius: 18, padding: 20,
                 display: 'flex', flexDirection: 'column', gap: 12,
               }}>
-                <div style={{
-                  fontSize: 11, color: 'var(--red)', fontWeight: 600,
-                  textTransform: 'uppercase', letterSpacing: 1,
-                }}>
+                <div style={{ fontSize: 11, color: 'var(--red)', fontWeight: 600,
+                  textTransform: 'uppercase', letterSpacing: 1 }}>
                   Requieren verificacion presencial
                 </div>
-
                 {data.alerts.map(alert => (
                   <div
                     key={alert.session_id}
@@ -214,54 +196,75 @@ export default function AdminDashboard() {
                 </div>
               </div>
             )}
-
-            {/* Accesos rapidos */}
-            <div style={{ display: 'flex', gap: 10 }}>
-              <button
-                onClick={() => navigate('/admin/employees')}
-                style={{
-                  flex: 1, background: 'var(--white)', border: 'none',
-                  borderRadius: 16, padding: '16px 12px',
-                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
-                  cursor: 'pointer',
-                }}
-              >
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
-                  stroke="var(--teal)" strokeWidth="2" strokeLinecap="round">
-                  <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
-                  <circle cx="9" cy="7" r="4"/>
-                  <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/>
-                </svg>
-                <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--dark)' }}>
-                  Empleados
-                </div>
-              </button>
-
-              <button
-                onClick={() => navigate('/admin/settings')}
-                style={{
-                  background: 'var(--white)', border: 'none',
-                  borderRadius: 16, padding: '16px 20px',
-                  display: 'flex', alignItems: 'center', gap: 12,
-                  cursor: 'pointer', width: '100%',
-                }}
-              >
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
-                  stroke="var(--teal)" strokeWidth="2" strokeLinecap="round">
-                  <circle cx="12" cy="12" r="3"/>
-                  <path d="M12 2v2M12 20v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M2 12h2M20 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
-                </svg>
-                <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--dark)' }}>
-                  Configuracion
-                </div>
-                <svg style={{ marginLeft: 'auto' }} width="14" height="14" viewBox="0 0 14 14"
-                  fill="none" stroke="var(--g1)" strokeWidth="2" strokeLinecap="round">
-                  <path d="M5 3l4 4-4 4"/>
-                </svg>
-              </button>
-            </div>
           </>
         )}
+      </div>
+
+      {/* Navegacion inferior fija */}
+      <div style={{
+        position: 'fixed', bottom: 0, left: 0, right: 0,
+        background: 'var(--white)',
+        borderTop: '1px solid var(--g3)',
+        padding: '10px 16px 28px',
+        display: 'flex', gap: 0,
+        zIndex: 100,
+      }}>
+        {[
+          {
+            label: 'Empleados',
+            path: '/admin/employees',
+            icon: (
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+                stroke="var(--teal)" strokeWidth="2" strokeLinecap="round">
+                <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+                <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/>
+              </svg>
+            ),
+          },
+          {
+            label: 'Configuracion',
+            path: '/admin/settings',
+            icon: (
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+                stroke="var(--teal)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="3"/>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+              </svg>
+            ),
+          },
+          {
+            label: 'Salir',
+            action: handleLogout,
+            icon: (
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+                stroke="var(--g1)" strokeWidth="2" strokeLinecap="round">
+                <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
+                <polyline points="16 17 21 12 16 7"/>
+                <line x1="21" y1="12" x2="9" y2="12"/>
+              </svg>
+            ),
+            labelColor: 'var(--g1)',
+          },
+        ].map(item => (
+          <button
+            key={item.label}
+            onClick={item.action || (() => navigate(item.path))}
+            style={{
+              flex: 1, background: 'none', border: 'none', cursor: 'pointer',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+              padding: '8px 4px',
+            }}
+          >
+            {item.icon}
+            <div style={{
+              fontSize: 11, fontWeight: 600,
+              color: item.labelColor || 'var(--dark)',
+            }}>
+              {item.label}
+            </div>
+          </button>
+        ))}
       </div>
     </div>
   )
