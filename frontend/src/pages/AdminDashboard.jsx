@@ -6,7 +6,7 @@ import { getAdminDashboard } from '../services/api'
 
 export default function AdminDashboard() {
   const navigate = useNavigate()
-  const { adminCompanyName, adminAccessCode, logout } = useUserStore()
+  const { adminCompanyName, adminAccessCode, logoutAdmin } = useUserStore()
 
   const [data, setData]       = useState(null)
   const [loading, setLoading] = useState(true)
@@ -20,7 +20,7 @@ export default function AdminDashboard() {
   }, [])
 
   function handleLogout() {
-    logout()
+    logoutAdmin()
     navigate('/')
   }
 

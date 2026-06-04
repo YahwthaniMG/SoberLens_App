@@ -6,7 +6,7 @@ import { getSessions } from '../services/api'
 
 export default function EmployeeDashboard() {
   const navigate = useNavigate()
-  const { workerName, area, shift, logout } = useUserStore()
+  const { workerName, area, shift, logoutEmployee } = useUserStore()
 
   const [sessions, setSessions] = useState([])
   const [loading, setLoading]   = useState(true)
@@ -281,7 +281,7 @@ export default function EmployeeDashboard() {
           },
           {
             label: 'Salir',
-            action: () => { logout(); navigate('/') },
+            action: () => { logoutEmployee(); navigate('/') },
             icon: (
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
                 stroke="var(--g1)" strokeWidth="2" strokeLinecap="round">

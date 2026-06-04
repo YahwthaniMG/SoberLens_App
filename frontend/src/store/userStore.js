@@ -129,8 +129,37 @@ const useUserStore = create((setState) => ({
   // Cerrar sesion (limpia todo)
   // ---------------------------------------------------------------------------
 
+  // Cerrar sesion como empleado (solo borra datos de empleado)
+  logoutEmployee() {
+    const keysToRemove = [
+      KEYS.role, KEYS.employeeId, KEYS.workerId, KEYS.companyId,
+      KEYS.companyName, KEYS.workerName, KEYS.area, KEYS.shift,
+      KEYS.faceRegistered, KEYS.consentGiven,
+    ]
+    keysToRemove.forEach(k => localStorage.removeItem(k))
+    setState({
+      role: '',
+      employeeId: '', workerId: '', companyId: '', companyName: '',
+      workerName: '', area: '', shift: '',
+      faceRegistered: false, consentGiven: false,
+    })
+  },
+
+  // Cerrar sesion como admin (solo borra datos de admin)
+  logoutAdmin() {
+    const keysToRemove = [
+      KEYS.role, KEYS.adminToken, KEYS.adminCompanyId,
+      KEYS.adminCompanyName, KEYS.adminAccessCode,
+    ]
+    keysToRemove.forEach(k => localStorage.removeItem(k))
+    setState({
+      role: '',
+      adminToken: '', adminCompanyId: '', adminCompanyName: '', adminAccessCode: '',
+    })
+  },
+
+  // Logout completo (borra todo menos deviceId)
   logout() {
-    // Conservar el deviceId — es del dispositivo, no del usuario
     const currentDeviceId = localStorage.getItem(KEYS.deviceId)
     Object.values(KEYS).forEach(k => {
       if (k !== KEYS.deviceId) localStorage.removeItem(k)

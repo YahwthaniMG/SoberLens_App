@@ -9,17 +9,20 @@ export default function RoleSelection() {
 
   function handleEmployee() {
     setRole('employee')
-    // Si ya tiene sesion completa, ir directo al dashboard
-    if (employeeId && faceRegistered && consentGiven) {
+    const stored = {
+      employeeId:    localStorage.getItem('soberlens_employee_id'),
+      faceRegistered: localStorage.getItem('soberlens_face_registered') === 'true',
+      consentGiven:   localStorage.getItem('soberlens_consent_given') === 'true',
+    }
+    if (stored.employeeId && stored.faceRegistered && stored.consentGiven) {
       navigate('/dashboard')
       return
     }
-    // Si tiene employeeId pero le falta algo del registro
-    if (employeeId && !faceRegistered) {
+    if (stored.employeeId && !stored.faceRegistered) {
       navigate('/register-face')
       return
     }
-    if (employeeId && !consentGiven) {
+    if (stored.employeeId && !stored.consentGiven) {
       navigate('/consent')
       return
     }

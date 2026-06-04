@@ -23,7 +23,7 @@ function getDaysBetween(dateStr, today) {
 
 export default function UserProfile() {
   const navigate = useNavigate()
-  const { workerName, area, shift, workerId, logout } = useUserStore()
+  const { workerName, area, shift, workerId, logoutEmployee } = useUserStore()
 
   const [sessions, setSessions] = useState([])
   const [loading, setLoading]   = useState(true)
@@ -291,7 +291,7 @@ export default function UserProfile() {
           </button>
 
           <button
-            onClick={() => { logout(); navigate('/') }}
+            onClick={() => { logoutEmployee(); navigate('/') }}
             style={{
               width: '100%', padding: '14px 16px',
               background: 'none', border: 'none', cursor: 'pointer',
