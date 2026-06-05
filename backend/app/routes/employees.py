@@ -109,14 +109,11 @@ def verify_worker_id(body: VerifyIdRequest, db: Session = Depends(get_db)):
             status_code=404,
             detail="ID de trabajador no encontrado en esta empresa.",
         )
-
-    # En punto de acceso se permite aunque ya tenga dispositivo registrado
     if not body.access_point and employee.device_id is not None:
         raise HTTPException(
             status_code=409,
             detail="Este ID ya fue registrado en otro dispositivo.",
         )
-
     return {
         "employee_id": employee.id,
         "name": employee.name,
