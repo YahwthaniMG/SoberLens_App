@@ -80,15 +80,16 @@ def _send_whatsapp(client, to_number: str, contact_name: str, pct: int) -> bool:
 
 
 def _send_sms(client, to_number: str, message: str) -> bool:
-    """Envia SMS via Messaging Service como fallback."""
-    messaging_service_sid = os.getenv("TWILIO_MESSAGING_SERVICE_SID", "")
+    """Envia SMS directamente desde el numero de telefono."""
+    from_number = os.getenv("TWILIO_PHONE_FROM", "")
 
-    if not messaging_service_sid:
+    if not from_number:
+        logger.warning("TWILIO_PHONE_FROM no configurado.")
         return False
 
     try:
         client.messages.create(
-            messaging_service_sid=messaging_service_sid,
+            from_=from_number,
             to=to_number,
             body=message,
         )
