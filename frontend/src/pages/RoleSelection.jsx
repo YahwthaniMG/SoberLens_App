@@ -1,11 +1,11 @@
 // frontend/src/pages/RoleSelection.jsx
-import { useNavigate } from 'react-router-dom'
 import useUserStore from '../store/userStore'
+import { useNavigate } from 'react-router-dom'
 
 export default function RoleSelection() {
   const navigate = useNavigate()
   const { setRole, employeeId, faceRegistered, consentGiven,
-          adminToken, role } = useUserStore()
+          adminToken, accessPointCompanyId } = useUserStore()
 
   function handleEmployee() {
     setRole('employee')
@@ -36,6 +36,14 @@ export default function RoleSelection() {
       return
     }
     navigate('/admin/login')
+  }
+
+  function handleAccessPoint() {
+    if (accessPointCompanyId) {
+      navigate('/access-point/worker')
+    } else {
+      navigate('/access-point/setup')
+    }
   }
 
   return (
@@ -153,8 +161,44 @@ export default function RoleSelection() {
               <path d="M6 3l5 5-5 5" />
             </svg>
           </button>
-        </div>
 
+          <button
+            onClick={handleAccessPoint}
+            style={{
+              background: 'var(--dark2)', border: '1px solid var(--dark3)',
+              borderRadius: 16, padding: '20px',
+              display: 'flex', alignItems: 'center', gap: 16,
+              cursor: 'pointer', textAlign: 'left', width: '100%',
+            }}
+          >
+            <div style={{
+              width: 44, height: 44, borderRadius: 12, flexShrink: 0,
+              background: 'rgba(245,158,11,0.12)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+                stroke="var(--amber)" strokeWidth="2" strokeLinecap="round">
+                <rect x="3" y="11" width="18" height="11" rx="2"/>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+              </svg>
+            </div>
+            <div>
+              <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--white)', marginBottom: 2 }}>
+                Punto de acceso
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--g1)', lineHeight: 1.4 }}>
+                {accessPointCompanyId
+                  ? 'Verificacion compartida para cualquier empleado'
+                  : 'Configurar este dispositivo como terminal de acceso'}
+              </div>
+            </div>
+            <svg style={{ marginLeft: 'auto', flexShrink: 0 }}
+              width="16" height="16" viewBox="0 0 16 16" fill="none"
+              stroke="var(--g1)" strokeWidth="2" strokeLinecap="round">
+              <path d="M6 3l5 5-5 5" />
+            </svg>
+          </button>
+        </div>
         <div style={{ textAlign: 'center', fontSize: 11, color: 'var(--g1)' }}>
           <span
             onClick={() => navigate('/privacy')}

@@ -24,7 +24,13 @@ import AdminLogin          from './pages/AdminLogin'
 import AdminDashboard      from './pages/AdminDashboard'
 import AdminEmployeeDetail from './pages/AdminEmployeeDetail'
 import SecondVerification  from './pages/SecondVerification'
-import AdminSettings       from './pages/AdminSettings'
+import AdminSettings from './pages/AdminSettings'
+
+// Punto Acceso
+import AccessPointSetup   from './pages/AccessPointSetup'
+import AccessPointWorker  from './pages/AccessPointWorker'
+import AccessPointCapture from './pages/AccessPointCapture'
+import AccessPointResult  from './pages/AccessPointResult'
 
 function EmployeeGuard({ children }) {
   const { role, faceRegistered, consentGiven, employeeId } = useUserStore()
@@ -101,6 +107,11 @@ export default function App() {
       <Route path="/admin/employees" element={
         <AdminGuard><AdminEmployeeList /></AdminGuard>
       } />
+
+      <Route path="/access-point/setup"   element={<AccessPointSetup />} />
+      <Route path="/access-point/worker"  element={<AccessPointWorker />} />
+      <Route path="/access-point/capture" element={<AccessPointCapture />} />
+      <Route path="/access-point/result"  element={<AccessPointResult />} />
 
       {/* Compartidas */}
       <Route path="/privacy" element={<Privacy />} />

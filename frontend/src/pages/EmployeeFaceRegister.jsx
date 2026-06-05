@@ -6,9 +6,9 @@ import { registerEmployeeFace } from '../services/api'
 import { startCamera, stopCamera, capturePhoto } from '../services/camera'
 
 const STEPS = [
-  { label: 'Mira directo a la camara', icon: '👁' },
-  { label: 'Gira levemente a la derecha', icon: '→' },
-  { label: 'Gira levemente a la izquierda', icon: '←' },
+  { label: 'Mira directo a la camara' },
+  { label: 'Gira levemente a la derecha' },
+  { label: 'Gira levemente a la izquierda' },
 ]
 
 export default function EmployeeFaceRegister() {
@@ -105,9 +105,6 @@ export default function EmployeeFaceRegister() {
             position: 'absolute', bottom: 180, left: 0, right: 0,
             textAlign: 'center', padding: '0 24px',
           }}>
-            <div style={{ fontSize: 28, marginBottom: 8 }}>
-              {STEPS[step].icon}
-            </div>
             <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--white)' }}>
               {STEPS[step].label}
             </div>

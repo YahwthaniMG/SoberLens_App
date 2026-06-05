@@ -222,3 +222,18 @@ export async function getCompanyEmployees(area = '', shift = '') {
   })
   return handleResponse(res)
 }
+
+export async function analyzeFramesAccessPoint(frameBlobs, employeeId, companyId) {
+  const form = new FormData()
+  frameBlobs.forEach((blob, i) => form.append('frames', blob, `frame_${i}.jpg`))
+  const res = await fetch(`${BASE_URL}/analyze`, {
+    method: 'POST',
+    headers: {
+      'X-Device-ID':   getDeviceId(),
+      'X-Employee-ID': String(employeeId),
+      'X-Company-ID':  String(companyId),
+    },
+    body: form,
+  })
+  return handleResponse(res)
+}

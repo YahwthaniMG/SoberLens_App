@@ -16,7 +16,12 @@ const KEYS = {
   adminToken:  'soberlens_admin_token',
   adminCompanyId:   'soberlens_admin_company_id',
   adminCompanyName: 'soberlens_admin_company_name',
-  adminAccessCode:  'soberlens_admin_access_code',
+  adminAccessCode: 'soberlens_admin_access_code',
+  accessPointCompanyId:   'soberlens_ap_company_id',
+accessPointCompanyName: 'soberlens_ap_company_name',
+accessPointAccessCode:  'soberlens_ap_access_code',
+accessPointEmployeeId:  'soberlens_ap_employee_id',
+accessPointWorkerName:  'soberlens_ap_worker_name',
 }
 
 function get(key) {
@@ -60,7 +65,13 @@ const useUserStore = create((setState) => ({
   adminToken:       get(KEYS.adminToken),
   adminCompanyId:   get(KEYS.adminCompanyId),
   adminCompanyName: get(KEYS.adminCompanyName),
-  adminAccessCode:  get(KEYS.adminAccessCode),
+  adminAccessCode: get(KEYS.adminAccessCode),
+  
+  accessPointCompanyId:   get('soberlens_ap_company_id'),
+  accessPointCompanyName: get('soberlens_ap_company_name'),
+  accessPointAccessCode:  get('soberlens_ap_access_code'),
+  accessPointEmployeeId:  get('soberlens_ap_employee_id'),
+  accessPointWorkerName:  get('soberlens_ap_worker_name'),
 
   // ---------------------------------------------------------------------------
   // Acciones compartidas
@@ -123,6 +134,29 @@ const useUserStore = create((setState) => ({
       role: 'admin',
     })
     set(KEYS.role, 'admin')
+  },
+
+  setAccessPointCompany(companyId, companyName, accessCode) {
+    localStorage.setItem('soberlens_ap_company_id',   String(companyId))
+    localStorage.setItem('soberlens_ap_company_name', companyName)
+    localStorage.setItem('soberlens_ap_access_code',  accessCode)
+    setState({
+      accessPointCompanyId:   String(companyId),
+      accessPointCompanyName: companyName,
+      accessPointAccessCode:  accessCode,
+    })
+  },
+
+  setAccessPointEmployee(employeeId, workerName) {
+    localStorage.setItem('soberlens_ap_employee_id',  String(employeeId))
+    localStorage.setItem('soberlens_ap_worker_name',  workerName)
+    setState({ accessPointEmployeeId: String(employeeId), accessPointWorkerName: workerName })
+  },
+
+  clearAccessPointEmployee() {
+    localStorage.removeItem('soberlens_ap_employee_id')
+    localStorage.removeItem('soberlens_ap_worker_name')
+    setState({ accessPointEmployeeId: '', accessPointWorkerName: '' })
   },
 
   // ---------------------------------------------------------------------------
