@@ -122,6 +122,7 @@ def verify_worker_id(body: VerifyIdRequest, db: Session = Depends(get_db)):
         "name": employee.name,
         "area": employee.area,
         "shift": employee.shift,
+        "has_embedding": employee.face_embedding is not None,
     }
 
 
@@ -202,4 +203,77 @@ def get_employee(
         "shift": employee.shift,
         "company_id": employee.company_id,
         "status": employee.status,
+    }
+
+
+@router.post("/recover-device")
+def recover_device(
+    frame: UploadFile = File(...),
+    x_device_id: str = Header(..., alias="X-Device-ID"),
+    x_employee_id: int = Header(..., alias="X-Employee-ID"),
+    x_company_id: int = Header(..., alias="X-Company-ID"),
+    db: Session = Depends(get_db),
+    svc: IdentityService = Depends(get_identity_service),
+):
+    """
+    Permite a un empleado recuperar su cuenta en un nuevo dispositivo
+    verificando su identidad facial.
+    """
+    import os
+    import cv2
+    import numpy as np
+
+    employee = (
+        db.query(Employee)
+        .filter(
+            Employee.id == x_employee_id,
+            Employee.company_id == x_company_id,
+        )
+        .first()
+    )
+
+    if employee is None:
+        raise HTTPException(status_code=404, detail="Empleado no encontrado.")
+
+    if employee.face_embedding is None:
+        raise HTTPException(
+            status_code=422,
+            detail="Este empleado no tiene embedding registrado. Realiza el registro facial.",
+        )
+
+    raw = frame.file.read()
+    arr = np.frombuffer(raw, dtype=np.uint8)
+    bgr = cv2.imdecode(arr, cv2.IMREAD_COLOR)
+    if bgr is None:
+        raise HTTPException(status_code=400, detail="No se pudo decodificar la imagen.")
+
+    embedding_current = svc.extract_embedding(bgr)
+    if embedding_current is None:
+        raise HTTPException(status_code=422, detail="No se detecto cara en la imagen.")
+
+    embedding_ref = svc.deserialize(employee.face_embedding)
+    threshold = float(os.getenv("EMBEDDING_SIMILARITY_THRESHOLD", 0.75))
+    similarity = svc.cosine_similarity(embedding_ref, embedding_current)
+
+    if similarity < threshold:
+        raise HTTPException(
+            status_code=403,
+            detail=f"Rostro no coincide con el empleado registrado (similitud: {similarity:.2f}).",
+        )
+
+    employee.device_id = x_device_id
+    db.commit()
+
+    logger.info(
+        "Device recuperado: employee_id=%d nuevo_device_id=%s similarity=%.4f",
+        employee.id,
+        x_device_id,
+        similarity,
+    )
+
+    return {
+        "recovered": True,
+        "employee_id": employee.id,
+        "name": employee.name,
+        "similarity": round(similarity, 4),
     }

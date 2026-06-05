@@ -60,11 +60,15 @@ export async function joinCompany(accessCode) {
   return handleResponse(res)
 }
 
-export async function verifyWorkerId(workerId, companyId) {
+export async function verifyWorkerId(workerId, companyId, accessPoint = false) {
   const res = await fetch(`${BASE_URL}/employees/verify-id`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ worker_id: workerId, company_id: companyId }),
+    body: JSON.stringify({
+      worker_id: workerId,
+      company_id: companyId,
+      access_point: accessPoint,
+    }),
   })
   return handleResponse(res)
 }
@@ -250,3 +254,34 @@ export async function analyzeFramesAccessPoint(frameBlobs, employeeId, companyId
   })
   return handleResponse(res)
 }
+
+export async function verifyFaceAccessPoint(imageBlob, employeeId, companyId) {
+  const form = new FormData()
+  form.append('frame', imageBlob, 'face.jpg')
+  const res = await fetch(`${BASE_URL}/identity/verify`, {
+    method: 'POST',
+    headers: {
+      'X-Device-ID':   getDeviceId(),
+      'X-Employee-ID': String(employeeId),
+      'X-Company-ID':  String(companyId),
+    },
+    body: form,
+  })
+  return handleResponse(res)
+}
+
+export async function recoverEmployeeDevice(imageBlob, employeeId, companyId) {
+  const form = new FormData()
+  form.append('frame', imageBlob, 'face.jpg')
+  const res = await fetch(`${BASE_URL}/employees/recover-device`, {
+    method: 'POST',
+    headers: {
+      'X-Device-ID':   getDeviceId(),
+      'X-Employee-ID': String(employeeId),
+      'X-Company-ID':  String(companyId),
+    },
+    body: form,
+  })
+  return handleResponse(res)
+}
+

@@ -9,7 +9,7 @@ export default function AccessPointWorker() {
   const {
     accessPointCompanyId, accessPointCompanyName,
     setAccessPointEmployee, clearAccessPointEmployee,
-    setAccessPointCompany,
+    setAccessPointCompany, has_embedding,
   } = useUserStore()
 
   const [workerId, setWorkerId] = useState('')
@@ -32,9 +32,9 @@ export default function AccessPointWorker() {
   }
 
   function handleConfirm() {
-    setAccessPointEmployee(preview.employee_id, preview.name)
-    navigate('/access-point/capture')
-  }
+  setAccessPointEmployee(preview.employee_id, preview.name, preview.has_embedding)
+  navigate('/access-point/capture')
+}
 
   function handleReset() {
     // Permite cambiar la empresa del punto de acceso

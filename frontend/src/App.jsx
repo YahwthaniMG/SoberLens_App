@@ -17,6 +17,7 @@ import Result               from './pages/Result'
 import Schedule             from './pages/Schedule'
 import UserProfile from './pages/UserProfile'
 import AdminEmployeeList from './pages/AdminEmployeeList'
+import EmployeeDeviceRecovery from './pages/EmployeeDeviceRecovery'
 
 // Flujo admin
 import CompanyRegister     from './pages/CompanyRegister'
@@ -30,7 +31,8 @@ import AdminSettings from './pages/AdminSettings'
 import AccessPointSetup   from './pages/AccessPointSetup'
 import AccessPointWorker  from './pages/AccessPointWorker'
 import AccessPointCapture from './pages/AccessPointCapture'
-import AccessPointResult  from './pages/AccessPointResult'
+import AccessPointResult from './pages/AccessPointResult'
+
 
 function EmployeeGuard({ children }) {
   const { role, faceRegistered, consentGiven, employeeId } = useUserStore()
@@ -112,7 +114,8 @@ export default function App() {
       <Route path="/access-point/worker"  element={<AccessPointWorker />} />
       <Route path="/access-point/capture" element={<AccessPointCapture />} />
       <Route path="/access-point/result"  element={<AccessPointResult />} />
-
+      <Route path="/recover-device" element={<EmployeeDeviceRecovery />} />
+      
       {/* Compartidas */}
       <Route path="/privacy" element={<Privacy />} />
 

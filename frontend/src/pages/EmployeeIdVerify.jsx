@@ -8,20 +8,27 @@ export default function EmployeeIdVerify() {
   const navigate = useNavigate()
   const { companyId, companyName, setEmployeeProfile } = useUserStore()
 
-  const [workerId, setWorkerId] = useState('')
-  const [error, setError]       = useState('')
-  const [loading, setLoading]   = useState(false)
-  const [preview, setPreview]   = useState(null)
+  const [workerId, setWorkerId]   = useState('')
+  const [error, setError]         = useState('')
+  const [loading, setLoading]     = useState(false)
+  const [preview, setPreview]     = useState(null)
+  const [conflictData, setConflictData] = useState(null)
 
   async function handleSearch() {
     if (!workerId.trim()) return
     setLoading(true)
     setError('')
+    setConflictData(null)
     try {
       const data = await verifyWorkerId(workerId.trim(), Number(companyId))
       setPreview(data)
     } catch (err) {
-      setError(err.message || 'ID no encontrado en esta empresa.')
+      if (err.message?.includes('otro dispositivo')) {
+        setConflictData({ workerId: workerId.trim() })
+        setError('')
+      } else {
+        setError(err.message || 'ID no encontrado en esta empresa.')
+      }
     } finally {
       setLoading(false)
     }
@@ -38,9 +45,15 @@ export default function EmployeeIdVerify() {
     navigate('/consent')
   }
 
+  function handleRecover() {
+    navigate('/recover-device', {
+      state: { workerId: conflictData.workerId, companyId },
+    })
+  }
+
   return (
     <div className="screen" style={{ background: 'var(--dark)' }}>
-      <div className="status-bar" style={{ color: 'var(--g1)' }}>
+      <div className="status-bar">
         <button
           onClick={() => navigate('/join')}
           style={{ background: 'none', border: 'none', cursor: 'pointer',
@@ -66,27 +79,58 @@ export default function EmployeeIdVerify() {
             Ingresa tu ID de trabajador
           </div>
           <div style={{ fontSize: 13, color: 'var(--g1)', lineHeight: 1.6 }}>
-            Es el numero o clave que te asigno tu empresa. Aparece en tu credencial o contrato.
+            El numero o clave que te asigno tu empresa.
           </div>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <input
-            value={workerId}
-            onChange={e => { setWorkerId(e.target.value); setError(''); setPreview(null) }}
-            placeholder="Ej. EMP001"
-            style={{
-              background: 'var(--dark2)',
-              border: `1px solid ${error ? '#ef4444' : 'var(--dark3)'}`,
-              borderRadius: 12, padding: '14px 16px',
-              fontSize: 16, color: 'var(--white)',
-              outline: 'none', width: '100%', boxSizing: 'border-box',
-            }}
-          />
-          {error && (
-            <div style={{ fontSize: 12, color: '#ef4444' }}>{error}</div>
-          )}
-        </div>
+        <input
+          value={workerId}
+          onChange={e => {
+            setWorkerId(e.target.value)
+            setError('')
+            setPreview(null)
+            setConflictData(null)
+          }}
+          placeholder="Ej. EMP001"
+          style={{
+            background: 'var(--dark2)',
+            border: `1px solid ${error || conflictData ? '#ef4444' : 'var(--dark3)'}`,
+            borderRadius: 12, padding: '14px 16px',
+            fontSize: 16, color: 'var(--white)',
+            outline: 'none', width: '100%', boxSizing: 'border-box',
+          }}
+        />
+
+        {error && (
+          <div style={{ fontSize: 12, color: '#ef4444' }}>{error}</div>
+        )}
+
+        {/* Conflicto de dispositivo */}
+        {conflictData && (
+          <div style={{
+            background: 'rgba(245,158,11,0.08)',
+            border: '1px solid rgba(245,158,11,0.25)',
+            borderRadius: 14, padding: '16px',
+            display: 'flex', flexDirection: 'column', gap: 10,
+          }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--white)' }}>
+              Este ID ya esta registrado en otro dispositivo
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--g1)', lineHeight: 1.5 }}>
+              Si eres tu, verifica con tu rostro para recuperar el acceso en este dispositivo.
+            </div>
+            <button
+              onClick={handleRecover}
+              style={{
+                background: 'var(--amber)', color: 'var(--dark)',
+                border: 'none', borderRadius: 12, padding: '13px',
+                fontSize: 14, fontWeight: 700, cursor: 'pointer', width: '100%',
+              }}
+            >
+              Verificar mi identidad para recuperar acceso
+            </button>
+          </div>
+        )}
 
         {/* Preview del empleado */}
         {preview && (
@@ -114,7 +158,7 @@ export default function EmployeeIdVerify() {
         )}
 
         <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {!preview ? (
+          {!preview && !conflictData ? (
             <button
               onClick={handleSearch}
               disabled={loading || !workerId.trim()}
@@ -128,7 +172,7 @@ export default function EmployeeIdVerify() {
             >
               {loading ? 'Buscando...' : 'Buscar'}
             </button>
-          ) : (
+          ) : preview ? (
             <>
               <button
                 onClick={handleConfirm}
@@ -148,10 +192,10 @@ export default function EmployeeIdVerify() {
                   fontSize: 14, cursor: 'pointer', width: '100%',
                 }}
               >
-                No soy yo, intentar de nuevo
+                No soy yo
               </button>
             </>
-          )}
+          ) : null}
         </div>
       </div>
     </div>

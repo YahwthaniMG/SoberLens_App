@@ -18,10 +18,11 @@ const KEYS = {
   adminCompanyName: 'soberlens_admin_company_name',
   adminAccessCode: 'soberlens_admin_access_code',
   accessPointCompanyId:   'soberlens_ap_company_id',
-accessPointCompanyName: 'soberlens_ap_company_name',
-accessPointAccessCode:  'soberlens_ap_access_code',
-accessPointEmployeeId:  'soberlens_ap_employee_id',
-accessPointWorkerName:  'soberlens_ap_worker_name',
+  accessPointCompanyName: 'soberlens_ap_company_name',
+  accessPointAccessCode:  'soberlens_ap_access_code',
+  accessPointEmployeeId:  'soberlens_ap_employee_id',
+  accessPointWorkerName: 'soberlens_ap_worker_name',
+  accessPointHasEmbedding: 'soberlens_ap_has_embedding',
 }
 
 function get(key) {
@@ -72,7 +73,7 @@ const useUserStore = create((setState) => ({
   accessPointAccessCode:  get('soberlens_ap_access_code'),
   accessPointEmployeeId:  get('soberlens_ap_employee_id'),
   accessPointWorkerName:  get('soberlens_ap_worker_name'),
-
+  accessPointHasEmbedding: localStorage.getItem('soberlens_ap_has_embedding') === 'true',
   // ---------------------------------------------------------------------------
   // Acciones compartidas
   // ---------------------------------------------------------------------------
@@ -147,10 +148,15 @@ const useUserStore = create((setState) => ({
     })
   },
 
-  setAccessPointEmployee(employeeId, workerName) {
-    localStorage.setItem('soberlens_ap_employee_id',  String(employeeId))
-    localStorage.setItem('soberlens_ap_worker_name',  workerName)
-    setState({ accessPointEmployeeId: String(employeeId), accessPointWorkerName: workerName })
+  setAccessPointEmployee(employeeId, workerName, hasEmbedding) {
+    localStorage.setItem('soberlens_ap_employee_id',    String(employeeId))
+    localStorage.setItem('soberlens_ap_worker_name',    workerName)
+    localStorage.setItem('soberlens_ap_has_embedding',  String(hasEmbedding))
+    setState({
+      accessPointEmployeeId:   String(employeeId),
+      accessPointWorkerName:   workerName,
+      accessPointHasEmbedding: hasEmbedding,
+    })
   },
 
   clearAccessPointEmployee() {
