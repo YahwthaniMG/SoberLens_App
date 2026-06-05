@@ -63,6 +63,7 @@ class JoinRequest(BaseModel):
 class VerifyIdRequest(BaseModel):
     worker_id: str
     company_id: int
+    access_point: bool = False
 
 
 # ---------------------------------------------------------------------------
@@ -95,11 +96,6 @@ def join_company(body: JoinRequest, db: Session = Depends(get_db)):
 
 @router.post("/verify-id")
 def verify_worker_id(body: VerifyIdRequest, db: Session = Depends(get_db)):
-    """
-    El empleado ingresa su worker_id.
-    Retorna su nombre para confirmar que es el correcto antes de registrar la cara.
-    Solo acepta empleados sin device_id asignado (aun no registrados en la app).
-    """
     employee = (
         db.query(Employee)
         .filter(
@@ -113,7 +109,9 @@ def verify_worker_id(body: VerifyIdRequest, db: Session = Depends(get_db)):
             status_code=404,
             detail="ID de trabajador no encontrado en esta empresa.",
         )
-    if employee.device_id is not None:
+
+    # En punto de acceso se permite aunque ya tenga dispositivo registrado
+    if not body.access_point and employee.device_id is not None:
         raise HTTPException(
             status_code=409,
             detail="Este ID ya fue registrado en otro dispositivo.",

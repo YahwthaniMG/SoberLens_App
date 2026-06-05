@@ -69,6 +69,19 @@ export async function verifyWorkerId(workerId, companyId) {
   return handleResponse(res)
 }
 
+export async function verifyWorkerIdAccessPoint(workerId, companyId) {
+  const res = await fetch(`${BASE_URL}/employees/verify-id`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      worker_id: workerId,
+      company_id: companyId,
+      access_point: true,
+    }),
+  })
+  return handleResponse(res)
+}
+
 export async function registerEmployeeFace(imageBlob) {
   const form = new FormData()
   form.append('frame', imageBlob, 'face.jpg')

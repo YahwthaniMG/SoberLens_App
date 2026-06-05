@@ -2,7 +2,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import useUserStore from '../store/userStore'
-import { verifyWorkerId } from '../services/api'
+import { verifyWorkerIdAccessPoint } from '../services/api'
 
 export default function AccessPointWorker() {
   const navigate = useNavigate()
@@ -22,7 +22,7 @@ export default function AccessPointWorker() {
     setLoading(true)
     setError('')
     try {
-      const data = await verifyWorkerId(workerId.trim(), Number(accessPointCompanyId))
+      const data = await verifyWorkerIdAccessPoint(workerId.trim(), Number(accessPointCompanyId))
       setPreview(data)
     } catch (err) {
       setError(err.message || 'ID no encontrado.')
